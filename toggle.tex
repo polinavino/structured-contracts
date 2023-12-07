@@ -1,0 +1,509 @@
+\section{Multiple implementations of a single specification example}
+\label{sec:toggle}
+
+Script interaction in the UTxO ledger refers the dependency of one
+script on the successful validation of another that is run within the same transaction.
+A feature of the structured contract formalism is that
+it allows for specifying stateful programs that can be implemented with
+multiple interacting UTxO-locking and minting policy scripts, which we demonstrate
+in this section.
+
+Using this example, we additionally demonstrate that our formalism allows
+for different implementations
+of the same specification. This enables contract authors to compare
+distinct implementations across any relevant properties, such as space usage,
+or parallelizability.
+
+\subsection{Toggle specification}
+
+We define a specification wherein
+the state consists of two booleans, and only one can be $\true$
+at a time. We set the contract input to be
+be $\{\toggle \} \uniondistinct \emptytype$.
+The two booleans in the state are interchanged by $\toggle$, and not by $\emptytype$.
+We define the transition system $\TOGGLE$ :
+% \begin{figure}[htb]
+  \begin{equation}
+    \inference[DoNothing]
+    { \\
+    }
+    {
+    \begin{array}{l}
+      \\
+    \end{array}
+      \vdash
+      \left(
+      \begin{array}{r}
+        x, ~y
+      \end{array}
+      \right)
+      \trans{TOGGLE}{\emptytype}
+      \left(
+      \begin{array}{r}
+        x, ~y
+      \end{array}
+      \right) \\
+    }
+  \end{equation}
+  \begin{equation}
+    \inference[Toggle]
+    {~\\
+    }
+    {
+    \begin{array}{l}
+      \\
+    \end{array}
+      \vdash
+      \left(
+      \begin{array}{r}
+        x,~y
+      \end{array}
+      \right)
+      \trans{Toggle}{toggle}
+      \varUpdate{\left(
+      \begin{array}{r}
+        y,~x
+      \end{array}
+      \right) } \\
+    }
+  \end{equation}
+%   \caption{Specification of the $\mathsf{TOGGLE}$ transition}
+%   \label{fig:toggle-rule}
+% \end{figure}
+
+\subsection{Toggle implementations}
+
+We present two implementations of this specification. The \emph{naive implementation}
+is one that uses the datum of a single UTxO entry to store a representation of the state of the
+$\TOGGLE$ contract. The \emph{distributed implementation} uses datums in two distinct UTxO
+entries to represent the first and the second value of the pair that is the $\TOGGLE$ state.
+Even with this basic example, several interacting scripts must be defined to implement
+its specification. We present pseudocode for the required scripts.
+
+\paragraph{Thread token scripts}
+
+To define unique identifiers that point to the $\TOGGLE$ contract representation in the UTxO,
+we borrow the design pattern of \emph{thread tokens} introduced in \cite{eutxoma}. The idea is that
+an NFT is minted and stored in a UTxO entry that contains the datum representing (all
+or part of) the contract
+state. Since the NFT is script-guaranteed to be unique, it marks the unique authentic
+state-storing UTxO.
+When the state is updated, the UTxO containing the thread token is spent, and the
+thread token is placed in a new entry containing the updated state representation.
+
+\textbf{Naive implementation. }
+The naive implementation state is stored within a single UTxO, and so requires
+one thread token to track the evolution of the subsystem state.
+
+An output reference $\mathsf{myRef} \in \OutputRef$ is
+selected from those existing in the UTxO to uniquely identify the
+thread token. It must be spent for the minting policy to validate
+as a mechanism for ensuring this policy can only
+validate once, minting exactly one thread token, and placing it into the
+appropriately constructed output.
+The minting policy for the thread tokens is constructed as follows :
+
+% \begin{ruledfigure}{t}
+  \begin{align*}
+    \toggleTT_N~:& \OutputRef \to \Script \to \Script \\
+    \applyMPScript{\toggleTT_N~ \mathsf{myRef}~s}~\wcard~(\var{tx},~\var{pid})~\leteq&
+    \mathsf{myRef}~\in~ \{ ~\outputref~i~\mid~i \in \inputs~\var{tx}~\} \\
+    & \wedge \\
+    & \fun{oneT}~\var{pid}~(\fun{encode}~s) ~=~ \mint~\var{tx} \\
+    & \wedge  \\
+    &\exists~\var{o}~\in~\fun{outputs}~\var{tx}, \\
+    &~~~~~\val~\var{o}~=~\mathsf{oneT}~\var{pid}~(\fun{encode}~s) \\
+    & ~~~~~\wedge ~\validator~\var{o}~=~s~~\wedge ~~\fun{fromData}_N~(\datum~\var{o})~\neq~\emptytype
+  \end{align*}
+% \caption{$\TOGGLE$ thread token minting policy for the naive implementation}
+% \label{fig:toggle-tt-n}
+% \end{ruledfigure}
+
+\textbf{Distributed implementation. }
+The minting policy for the two distributed implementation
+thread tokens is constructed by :
+
+% \begin{ruledfigure}{t}
+  \begin{align*}
+    \toggleTT_D~:& \OutputRef \to \Script \to \Script \\
+    \applyMPScript{\toggleTT_D~\mathsf{myRef}~s}~\wcard~(\var{tx},~\var{pid})~\leteq &
+    \fun{myRef}~\in~ \{ ~\outputref~i~\mid~i \in \inputs~\var{tx}~\} \\
+    & \wedge \\
+    & \var{tta} ~+~ \var{ttb} ~=~ \mint~\var{tx} \\
+    & \wedge  \\
+    &\exists~\var{oa},~\var{ob}~\in~\fun{outputs}~\var{tx}, \\
+    &~~~~~\val~\var{oa}~=~\var{tta}~ \\
+    &~~~~~\wedge ~\val~\var{ob}~=~\var{ttb}~\\
+    & ~~~~~\wedge ~\validator~\var{oa}~=~\validator~\var{ob}~=~s \\
+    & ~~~~~\wedge ~\fun{fromData}_D~(\datum~\var{oa})~\neq~\emptytype~ \\
+    & ~~~~~\wedge~\fun{fromData}_D~(\datum~\var{ob})~\neq~\emptytype~~ \\
+    & \where \\
+    & ~~~~\var{tta} \leteq \mathsf{oneT}~\var{pid}~(\fun{encode}~s, "a") \\
+    & ~~~~\var{ttb} \leteq \mathsf{oneT}~\var{pid}~(\fun{encode}~s, "b")
+  \end{align*}
+% \caption{$\TOGGLE$ thread token minting policy for the distributed implementation}
+% \label{fig:toggle-tt-d}
+% \end{ruledfigure}
+
+Here, two distinct thread tokens must be minted and placed into separate UTxOs
+locked with the correct script. This is because each UTxO representing part of the
+toggle state requires a unique identifier. We distinguish between the tokens
+by adding $"a"$ to the token name of one, and $"b"$ to the other.
+
+\paragraph{Validator scripts}
+
+We again require different UTxO-locking scripts for our two distinct implementations.
+The functions, whose type is specified in \ref{fig:to-data}, encode and decode the
+datums which the implementation scripts inspect.
+Datums appears in transactions and UTxOs in the encoded $\Data$ format.
+
+\textbf{Naive implementation. }
+The naive implementation script has two main functions : ensuring that the thread
+token is propagated correctly into a new UTxO, and that the datum of that UTxO
+contais the toggled state of the UTxO that previously contained the thread token.
+The type of the datum of outputs locked by $\toggleVal_N$
+is $\B \times \B$. The validator script is given by :
+
+% \begin{ruledfigure}{t}
+  \begin{align*}
+    \applyScript{\toggleVal_N~\mathsf{myRef}}~(b, b')~\wcard~(\var{tx},~\var{i})~\leteq &~
+    \var{ttt}~ =~ \val~(\fun{output}~i) \\
+    & ~~~~ \wedge~ \\
+    & \exists~o~\in~\outputs~\var{tx},~~(b',~b)~=~(\datum~o) \\
+    &  ~~~~~~~~ \wedge~~\\
+    & ~~~~\validator~o~=~\var{vi} \\
+    &  ~~~~~~~~ \wedge \\
+    & ~~~~ \var{ttt} =~\val~o\\
+    & \where \\
+    & ~~~~\var{vi} \leteq \validator~(\fun{output}~i) \\
+    & ~~~~\var{ttt} \leteq \mathsf{oneT}~(\toggleTT_N~\mathsf{myRef}~\var{vi} )~(\fun{encode}~\var{vi})
+  \end{align*}
+% \caption{$\TOGGLE$ validator script for the naive implementation}
+% \label{fig:toggle-val-n}
+% \end{ruledfigure}
+
+\textbf{Distributed implementation. }
+The distributed implementation script ensures that the boolean in each of the
+datums of the spent UTxO entries containing the two thread tokens
+is the negation of the boolean of the newly created UTxOs with each of those tokens,
+respectively. The validator script is given by :
+
+% \begin{ruledfigure}{t}
+  \begin{align*}
+    \applyScript{\toggleVal_D~\mathsf{myRef}}~b~\wcard~(\var{tx},~\var{i})~\leteq &~
+    (\var{tta}~ =~ \val~(\fun{output}~i)) \Rightarrow \\
+    & ~~~~\exists~o,~o'\in~\outputs~\var{tx},~i' \in \fun{inputs}~\var{tx}, \\
+    & ~~~~ \validator~o~=~\validator~o'~=~\var{vi}~\wedge~\\
+    & ~~~~ \mathsf{tta}~ =~ \val~o \wedge \var{ttb}~ =~ \val~o' \wedge \val~(\fun{output}~i')~=~\var{ttb}) \\
+    & ~~~~ \datum~o~=~\datum~ (\fun{output}~i') \wedge \datum~o'~=~\datum~ (\fun{output}~i) \\
+    & \wedge \\
+    & (\var{ttb}~ =~ \val~(\fun{output}~i)) \Rightarrow \\
+    & ~~~~\exists~o,~o'\in~\outputs~\var{tx},~i' \in \fun{inputs}~\var{tx}, \\
+    & ~~~~ \validator~o~=~\validator~o'~=~\var{vi}~\wedge~\\
+    & ~~~~ \mathsf{tta}~ =~ \val~o \wedge \var{ttb}~ =~ \val~o' \wedge \val~(\fun{output}~i')~=~\var{tta}) \\
+    & ~~~~ \datum~o~=~\datum~ (\fun{output}~i) \wedge \datum~o'~=~\datum~ (\fun{output}~i') \\
+    & \wedge \\
+    & (\var{tta}~ =~ \val~(\fun{output}~i)) \vee (\var{ttb}~ =~ \val~(\fun{output}~i)) \\
+    & \where \\
+    & ~~~~\var{vi} \leteq \validator~(\fun{output}~i) \\
+    & ~~~~\var{tta} \leteq \mathsf{oneT}~(\toggleTT_D~\mathsf{myRef}~\var{vi})~(\fun{encode}~\var{vi}, "a") \\
+    & ~~~~\var{ttb} \leteq \mathsf{oneT}~(\toggleTT_D~\mathsf{myRef}~\var{vi})~(\fun{encode}~\var{vi}, "b")
+  \end{align*}
+% \caption{$\TOGGLE$ validator script for the distributed implementation}
+% \label{fig:toggle-val-d}
+% \end{ruledfigure}
+
+\paragraph{$\LEDGER$ - $\TOGGLE$ state and transition relations}
+
+Here we first encounter a situation wherein not every UTxO has a corresponding
+$\TOGGLE$ state. In particular, we can only relate UTxO states to toggle states
+wherein the toggle contract has already been initialized, ie. thread token(s) minted
+and stored in a correctly-defined UTxO. We fix $\mathsf{myRef}$ to some specific
+output reference. We also instantiate the thread tokens as follows :
+
+\begin{align*}
+  \fun{ttt} & \leteq \mathsf{oneT}~(\toggleTT_N~\mathsf{myRef})~(\fun{encode}~(\toggleVal_N~\mathsf{myRef})) \\
+  \fun{tta} &\leteq \mathsf{oneT}~(\toggleTT_D~\mathsf{myRef})~(\fun{encode}~(\toggleVal_D~\mathsf{myRef}), "a") \\
+  \fun{ttb} &\leteq \mathsf{oneT}~(\toggleTT_D~\mathsf{myRef})~(\fun{encode}~(\toggleVal_D~\mathsf{myRef}), "b")
+\end{align*}
+
+\textbf{Naive implementation relations. }
+
+In the naive implementation, a ledger state is related to a $\TOGGLE$ state
+whenever (i) the $\TOGGLE$ state is a pair booleans where one is the negation of the
+other, and (ii) there is exactly one output on the ledger containing the thread token,
+and locked by the correct validator, and with a datum that decodes to the same pair of booleans.
+
+\begin{align*}
+  \var{utxo}~\sim~(a,~b) &\leteq \mathsf{myRef}~\notin~\{ ~i~\mid~i\mapsto o \in  \var{utxo}~\} \\
+  & \wedge \exists ! ~i\mapsto o~\in~\var{utxo},~\fun{ttt}~=~\val~o~ \\
+  & ~~~~ \wedge~~\validator~o~=~\toggleVal_N~\mathsf{myRef}~~\wedge~~\datum~o~=~(a,~b)
+\end{align*}
+
+Next, we define the projections :
+
+\begin{align*}
+  \pi_{\TOGGLE}~\var{utxo}~ \leteq~\begin{cases}
+    (a, b) & \text{ if } \var{utxo}~\sim~(a,~b) \\
+    \emptytype & \text{otherwise}
+  \end{cases}
+\end{align*}
+
+\begin{align*}
+  \pi_{\TOGGLE,\Tx}~\var{tx}~ \leteq~\begin{cases}
+    \toggle & \text{ if } \exists~i~ \in~\inputs~\var{tx},~\val~(\fun{output}~i) = \fun{ttt} \\
+    \emptytype & \text{otherwise}
+  \end{cases}
+\end{align*}
+
+\textbf{Distributed implementation relation. }
+
+In the distributed implementation, a ledger state is related to a $\TOGGLE$ state
+whenever there are exactly two outputs on the ledger each containing one of the
+the two thread tokens, $\fun{tta}$ and $\fun{ttb}$,
+locked by the correct validator, each with a datum that decodes to the the corresponding
+boolean in the $\TOGGLE$ state.
+
+\begin{align*}
+  \var{utxo}~\sim~(a,~b) &\leteq \mathsf{myRef}~\notin~\{ ~i~\mid~i\mapsto o \in  \var{utxo}~\} \\
+  & \wedge \\
+  & \exists ! ~(i\mapsto o,~i'\mapsto o')~\in~\var{utxo},~\fun{tta}~=~\val~o~~\wedge~~\fun{ttb}~=~\val~o'\\
+  & ~~~~ \wedge~~\validator~o~=~\toggleVal_D~\mathsf{myRef}~=~\validator~o'~~
+  \wedge~~\datum~o~=~a~~\wedge~~\datum~o~=~b
+\end{align*}
+
+The function $\pi_{\TOGGLE}$ is defined in the same way as for the naive
+implementation, but with $\sim$ for the naive implementation. The transaction
+projection is :
+
+\begin{align*}
+  \pi_{\TOGGLE,\Tx}~\var{tx}~ \leteq~\begin{cases}
+    \toggle & \text{ if } \exists~i,~i'~ \in~\inputs~\var{tx},~\val~(\fun{output}~i) = \fun{tta} ~~\wedge ~~\val~(\fun{output}~i') = \fun{ttb}\\
+    \emptytype & \text{otherwise}
+  \end{cases}
+\end{align*}
+
+For both implementations, we again need to make a variation on the NFT
+re-minting protection assumption,
+
+For any $(\var{slot},~\var{utxo},~\var{tx},~\var{utxo'}) \in \LEDGER$, with
+$\pi~\var{utxo}~= (a, b)$, necessarily $\var{tx} \neq \fun{fst}~\mathsf{myRef}$.
+
+\paragraph{$\sim >$ relation proof sketch }
+
+Suppose that $(\var{slot},~\var{utxo},~\var{tx},~\var{utxo'})$, $\var{utxo}~\sim~(a,~b)$,
+and $\pi~\var{utxo} = (a,~b)$. There are two possibilities, $\pi~\var{tx} = \emptytype$
+and $\pi~\var{tx} = \toggle$, for each of which we must prove that
+$(\emptytype,~\pi~\var{utxo},~\pi~\var{tx},~\pi~\var{utxo'})$ and $\var{utxo}~\sim~\pi~\var{utxo'}$,
+i.e. that $\pi~\var{utxo'} \neq \emptytype$.
+
+We first observe that each of the thread tokens in either implementation
+is present in an input of the transaction if and only
+if it is present in the output :
+
+$\var{utxo}~\sim~(a,~b)$ implies that the token already exists in the UTxO set and is unique.
+The minting policy cannot be satisfied, as the constraint therein that
+
+\[\mathsf{myRef} \in \{ ~\outputref~i~\mid~i \in \inputs~\var{tx}~\} \]
+
+cannot be satisfied by the definition of $\sim~(a,~b)$.
+So, since thread tokens cannot be minted or burned, and by the POV rule
+\ref{rule:value-is-preserved}, we can make the required conclusion.
+
+\textbf{Naive implementation. }
+
+\begin{itemize}
+  \item[(i)] $\pi~\var{tx} = \emptytype$ :
+  \[ \neg ~(\exists !~i~ \in~\inputs~\var{tx},~\val~(\fun{output}~i) = \fun{ttt}) \]
+
+  since an additional token $\fun{ttt}$ cannot be minted,
+
+  \[ \neg ~(\exists ~i~ \in~\inputs~\var{tx},~\val~(\fun{output}~i) = \fun{ttt}) \]
+
+  therefore, the (unique) UTxO containing $\fun{ttt}$ remains in $\var{utxo'}$,
+  and no additional outputs containing $\fun{ttt}$ appear in $\var{utxo'}$,
+  thus guaranteeing the uniqueness of $\fun{ttt}$ in $\var{utxo'}$.
+  As shown above, $\mathsf{myRef}$ is also not added to the inputs of $\var{utxo'}$.
+  The value, datum, and validator of the UTxO containing $\fun{ttt}$
+  are unchanged, so that $\pi~\var{utxo'} = \pi~\var{utxo} \sim (a, b)$.
+  Then,
+
+  \[ (\emptytype, \pi~\var{utxo}, \pi~\var{tx}, \pi~\var{utxo'}) = (\emptytype, (a, b), \emptytype, (a, b)) \in \TOGGLE \]
+
+  \item[(i)] $\pi~\var{tx} = \toggle$ :
+  \[ \exists !~i~ \in~\inputs~\var{tx},~\val~(\fun{output}~i) = \fun{ttt} \]
+
+  so that the (unique) UTxO containing $\fun{ttt}$ is spent,
+  and no $\fun{ttt}$ tokens are minted or burned. Therefore, by POV,
+  the transaction must create a single output in $\var{utxo'}$
+  with that token. By definition of $\toggleVal_N$, that output must have a toggled datum
+  $(b, a)$, no other tokens, and a $\toggleVal_N$ script, so that
+  $\pi~\var{utxo'} \sim (b, a)$.
+  Again, $\mathsf{myRef}$ is not added to the inputs of $\var{utxo'}$.
+  Then,
+
+  \[ (\emptytype, \pi~\var{utxo}, \pi~\var{tx}, \pi~\var{utxo'}) = (\emptytype, (a, b), \emptytype, (b, a)) \in \TOGGLE \]
+
+\end{itemize}
+
+\textbf{Distributed implementation. }
+
+The proof for the distributed implementation is similar to the one for the
+naive implementation, except we reason about two inputs and two outputs
+containing two thread tokens.
+
+\paragraph{$\TOGGLE$ property example. }
+We can prove a property that the $\TOGGLE$ specification upholds, stating that
+either booleans are switched, or stay the same :
+
+\[ \forall (a, b) \in \State, (\emptytype, (a,b), i, (c, d)) \in \TOGGLE ~~\Rightarrow~~
+(c, d) = (b, a) \vee (c, d) = (a, b) \]
+
+And, because we have demonstrated the $\sim >$ relation, a related property can be
+stated for all valid ledger transactions applied to
+any state $\var{utxo}$ such that $\var{(a, b)} = \pi ~\var{utxo}$ :
+
+\[ \forall \var{utxo} \in \UTxO, (\wcard, \var{utxo}, \var{tx}, \var{utxo'}) \in \LEDGER ~~\Rightarrow~~
+\pi~\var{utxo} = \pi~\var{utxo'} \vee \pi~\var{utxo} = ((\pi~\var{utxo'})_2, (\pi~\var{utxo'})_1) \]
+
+Both properties require a constraint to hold for every state, and therefore
+are safety properties \cite{liveness}.
+
+% \section{$\LEDGER$ as a subsystem of a structured contract}
+%
+% We also show that we are able to define interacting scripts to
+% implement this specification in a way that guarantees it is always possible to
+% find a define a valid transaction that corresponds to the toggling action.
+
+% Recall the definition of $\STRUC$ being a \emph{subsystem} of $\TRANS$. For
+% structured contracts, $\TRANS = \LEDGER$.
+% As mentioned above, not all structured contract specification transitions will
+% have a corresponding $\LEDGER$ transition.
+% Here, we first demonstrate that $\LEDGER$ can be viewed as a subsystem of $\TOGGLE$,
+% so that for any $\TOGGLE$ transition, there is a $\LEDGER$ one (with the
+% $\sim$ relation satisfied by the appropriate states).
+% We then provide examples of specification predicates that depend on the validation
+% of opaque scripts, and therefore make it impossible to guarantee their validation.
+%
+% \subsection{$\LEDGER$ as a $\TOGGLE$ subsystem}
+%
+% In this section we fix $\STRUC \leteq \LEDGER$, and $\TRANS \leteq \TOGGLE$,
+% and demonstrate that
+%
+% \[ (\LEDGER,~\sim >,~ \sim) \succeq \TOGGLE\]
+%
+% Let us build a transaction that updates $\TOGGLE$ in the naive implementation.
+% The distributed implementation construction can be done via a similar approach.
+% Suppose $\var{utxo} \sim (a, b)$.
+% We define a $\var{tx}$ for the only non-trivial $\TOGGLE$ state update,
+% $(\emptytype, (a, b), \toggle, (b, a))$ :
+%
+% \begin{align*}
+%   \var{tx} &\leteq (\inputs = \{~(i,~o,~\toggle) ~\mid~i\mapsto o \in \var{utxo},~\val~o~=~\fun{ttt}~\},\\
+%              & \fun{outputs}~=~[~(\toggleVal_N~\mathsf{myRef},~\fun{ttt},~(b, a))~],\\
+%              & \fun{validityInterval}~=~(\mathsf{t},~\mathsf{t+l})\\
+%              & \mint~=~ \{\},\\
+%              & \mintScsRdmrs~=~\{\},\\
+%              & \sigs~=~\{\})\\
+% \end{align*}
+%
+% For some $\mathsf{t,~l} \in \Tick$. We can now prove that
+%
+% \[ (\emptytype, (a, b), \toggle, (b, a)) ~\sim >~(\var{t},~\var{utxo},~\var{tx}, (\fun{getORefs}~{tx} \subtractdom \var{utxo}) \cup \fun{mkOuts}~{tx}) \in \LEDGER \]
+%
+% by checking each ledger rule. Most of the proofs are trivial, but we sketch two
+% here. To show that the set of inputs is non-empty, rule \ref{rule:has-input} we argue :
+% by $\var{utxo} \sim (a, b)$, an output $(\toggleVal_N~\mathsf{myRef},~\fun{ttt},~(b, a))$
+% exists in the UTxO set. To show that all inputs validate, rule
+% \ref{rule:all-inputs-validate}, we note that $\mathsf{ttt}$ is in the
+% inputs of $\var{tx}$, and that the transaction also contains exactly the output
+% required by $\toggleVal_N$, which satisfies the constraints of the script.
+%
+% We observe that
+%
+% \[ \fun{getORefs}~{tx} \subtractdom \var{utxo}) \cup \fun{mkOuts}~{tx}~ \sim~ (b, a) \]
+%
+% since there is still exactly one $\fun{ttt}$ token (by the POV),
+% and it is in the output $(\toggleVal_N~\mathsf{myRef},~\fun{ttt},~(b, a))$, as
+% required by $\sim$.
+%
+% \subsection{When $\LEDGER$ is not a subsystem of $\STRUC$}
+%
+% Situations in which there is no transition in $\LEDGER$ that corresponds to a
+% transition in $\STRUC$ are common. Here we give two prominent categories of examples :
+%
+% \paragraph{Pay-ins. } Suppose $\State_{\STRUC} \leteq \Value \times ... $, and
+% a constraint on any implementation of the $\STRUC$ specification is that the
+% $\Value$ in the state is computed from the actual value found in some particular
+% UTxO entry or entries. This is the case for any contract that is expected to accept
+% pay-ins and make pay-outs on the ledger, which includes most financial contracts.
+%
+%   \begin{equation}
+%     \inference[PayIn]
+%     {~\\
+%     x~\leteq~\fun{payIn}~i & ... \\
+%     }
+%     {
+%     \begin{array}{l}
+%       \\
+%     \end{array}
+%       \vdash
+%       \left(
+%       \begin{array}{r}
+%         v,~...
+%       \end{array}
+%       \right)
+%       \trans{Toggle}{i}
+%       \left(
+%       \begin{array}{r}
+%         v~+~x,~...
+%       \end{array}
+%       \right) \\
+%     }
+%   \end{equation}
+%
+% To guarantee that a transition $(\var{slot},~\var{utxo},~\var{tx}, \var{utxo'}) \in \LEDGER$
+% exists for a given $(\emptytype, (v, ...),~i,~(v+x,~...))$, we must prove that
+% the value $x$ exists in $\var{utxo}$ when $\var{utxo} \sim (v, ...)$. Moreover,
+% we need to show that the value $x$ in the UTxO set
+% can be spent and used to pay into the contract, and that no transition on the
+% ledger $(\var{slot},~\var{utxo},~\var{tx'}, \var{utxo''})$ can spend
+% the "pay-in" value in $\var{utxo}$, making a pay-in is no longer possible
+% starting in the state $\var{utxo''} \sim (v, ...)$. Proposals for specifying the
+% ledger-contract state relation to address this issue is the subject of future work.
+%
+% \paragraph{Interacting contracts. } Another situation in which it is difficult to
+% guarantee a ledger transition corresponding to a specification step is
+% in the case of interacting contracts. Suppose that $\STRUC$,
+% as a predicate in the rules of its specification, requires that another structured
+% contract $\STRUC'$ is updated simultaneously, by, for example, requiring that its thread
+% token is included in on the the transaction inputs. The $\STRUC$ specification says nothing
+% about the constraints on the update of $\STRUC'$ that it requires to be performed.
+%
+% Structured contracts are an excellent tool for writing specifications that can be provably
+% implemented by several pieces of interdependent code. The interaction of $\STRUC$
+% and $\STRUC'$ can likely be given using a single specification, capturing their combined
+% state update, using the result below. Note, however, that in the general case,
+% determining the full set of scripts need to validate in order for a ledger transaction
+% corresponding to a specification step to be valid is a difficult problem, and is
+% the subject of future work.
+%
+% \subsection{Combining structured contracts}
+% \label{sec:combining}
+%
+% An advantage of the structured contract formalism is that,
+% given two (possibly interacting) structured contracts $\STRUC_1$ and $\STRUC_2$,
+% there is a straightforward way to combine these into a single transition system
+% that fully specifies the interaction. That is, as a system without dependency on scripts
+% whose validation is required via, e.g. a constraint on the contract input
+% necessitating any associated ledger transaction to contrain a particular input
+% locked by a particular script.
+%
+% Let $(\pi_{\STRUC-1},~\STRUC_1) ,~(\pi_{\STRUC'-2},~\STRUC_2) \succeq \LEDGER$ be structured contracts.
+% We can then define another structured contract $\STRUC$
+%
+% \[\STRUC \subseteq \emptytype \times (\State_1 \times \State_2) \times \Tx \times (\State_1 \times \State_2) \]
+%
+% \[ \STRUC \leteq \{ (\wcard, (s_0, s_1), i, (s'_0, s'_1)) ~\mid~(\wcard, s_0, i, s'_0)~\in~\STRUC_1~\wedge ~(\wcard, s_1, i, s'_1)~\in~\STRUC_2~ \} \]
+%
+% with $\pi_{\STRUC}~\var{utxo} \leteq (\pi_{\STRUC-1}~\var{utxo},~\pi_{\STRUC-2}~\var{utxo})$.

@@ -1,0 +1,365 @@
+\section{Appendix}
+
+Notation :
+
+\begin{figure}[htb]
+  \begin{align*}
+    \emptytype
+    & :~\{\emptytype \}
+    & \text{the one-element set, and its one inhabitant}
+    \\
+    \fun{fst}
+    & :~(A \times B) \to A
+    & \text{first projection}
+    \\
+    \var{Key} \mapsto \var{Value}
+    & \subsetneq \{~ k \mapsto v ~\mid~ k \in \var{Key},~v \in \var{Value}~ \}
+    & \text{finite map with unique keys}
+    \\
+    [~\fun{f}~\var{b}~\mid~\var{b} ~\leftarrow ~\var{myList}~]
+    & :~[C]
+    & \text{list comprehension, given $\fun{f} : B \to C$}
+    \\
+    \fun{map}
+    & :~(A \to B) \to [A] \to [B]
+    & \text{apply $\fun{map}$ to every element in given list}
+    \\
+    \fun{map}
+    & :~(A \to B) \to \powerset{A} \to \powerset{B}
+    & \text{apply $\fun{map}$ to every element in given set}
+    % \\
+    % \var{map}~ (\var{k})
+    % & = v
+    % & \text{where }~k~\mapsto~v~\in~\var{map}
+    % \\
+    % \var{set} \restrictdom \var{map}
+    % & = \{ k \mapsto v \mid k \mapsto v \in \var{map}, ~ k \in \var{set} \}
+    % & \text{domain restriction}
+    % \\
+    % \var{set} \subtractdom \var{map}
+    % & = \{ k \mapsto v \mid k \mapsto v \in \var{map}, ~ k \notin \var{set} \}
+    % & \text{domain exclusion}
+    \\
+    % \var{MyType}^?
+     & \var{MyType}~ \cup ~\emptytype
+    & \text{maybe type}
+    % \\
+    % \var{map} \restrictrange \var{set}
+    % & = \{ k \mapsto v \mid k \mapsto v \in \var{map}, ~ v \in \var{set} \}
+    % & \text{range restriction}
+    % \\
+    % \var{map} \subtractrange \var{set}
+    % & = \{ k \mapsto v \mid k \mapsto v \in \var{map}, ~ v \notin \var{set} \}
+    % & \text{range exclusion}
+    % \\
+    % A \triangle B
+    % & = (A \setminus B) \cup (B \setminus A)
+    % & \text{symmetric difference}
+    % \\
+    % M \unionoverrideRight N
+    % & = (\dom N \subtractdom M)\cup N
+    % & \text{union override right}
+    % \\
+    % % M \unionoverrideLeft N
+    % % & = M \cup (\dom M \subtractdom N)
+    % % & \text{union override left}
+    % \\
+    % M \unionoverridePlus N
+    % & = (M \triangle N)
+    % \cup \{k\mapsto v_1+v_2\mid {k\mapsto v_1}\in M \land {k\mapsto v_2}\in N \}
+    % & \text{union override plus} \\
+    % & & \text{(for monoidal values)}\\
+    % \\
+    % M \unionoverrideMinus N
+    % & = (M \triangle N)
+    % \cup \{k\mapsto v_1-v_2\mid {k\mapsto v_1}\in M \land {k\mapsto v_2}\in N \}
+    % & \text{union override minus} \\
+    % & & \text{(for group values)}\\
+    % \seqof{\powerset{T}}
+    % \\
+    % \llbracket s \rrbracket
+    % & = \fun{hash}~s
+    % & \text{hash of $s$} \\
+    % &
+    % & \text{power-multi-set of type $T$}
+  \end{align*}
+  \caption{Notation}
+  \label{fig:notation:nonstandard}
+\end{figure}
+
+% \begin{figure}[htb]
+%   \begin{align*}
+%     \fun{toMap}~ &:& \Ix \to [\Output] \to (\Ix \mapsto \Output) \\
+%     \fun{toMap}~\wcard~[] &=& [~] \\
+%     \fun{toMap}~\var{ix}~(u~ ::~\var{outs}) &=& \{~\var{ix}\mapsto u~\} \cup \{~(\fun{toMap}~(\var{ix}+1)~\var{outs})~\}\\
+%     \nextdef
+%     \fun{mkOuts}~ &:& \Tx \to \UTxO \\
+%     \fun{mkOuts}~{tx} &=& \{~(\var{tx},~\var{ix}) \mapsto o~ \mid~(\var{ix} \mapsto o)\in~\fun{toMap}~0~(\outputs~\var{tx})~\}\\
+%     \nextdef
+%     \fun{getORefs}~&~:& \Tx \to \Set{\OutputRef} \\
+%     \fun{getORefs}~{tx} &=& \{~\outputref~i~\mid~i~\in~\inputs~\var{tx} ~\} \\
+%   \end{align*}
+%   \caption{Auxiliary UTxO functions}
+%   \label{fig:utxo-func}
+% \end{figure}
+
+
+
+\begin{ruledfigure}{t}
+  \begin{displaymath}
+    \begin{array}{rll}
+      \multicolumn{3}{l}{\textsc{Basic types}}\\
+     \B, \N, \Z && \mbox{the type of Booleans, natural numbers, and integers}\\
+      \H{} && \mbox{the type of bytestrings: } \bigcup_{n=0}^{\infty}\{0,1\}^{8n}\\
+      % (\phi_1 : T_1, \ldots, \phi_n : T_n) && \mbox{a record type with fields $\phi_1, \ldots, \phi_n$ of types $T_1, \ldots, T_n$}\\
+      % \phi~\var{t} && \mbox{the value of $\phi$ for $t$, where $t$ has type $T$ and $\phi$ is a field of $T$}\\
+      \powerset{T} && \mbox{the type of (finite) sets over $T$}\\
+      $[T]$ && \mbox{the type of lists over $T$, with $\_[\_]$ as indexing and $|\_|$ as length}\\
+      h::t && \mbox{the list with head $h$ and tail $t$}\\
+%      x \mapsto f(x) && \mbox{an anonymous function}\\
+%      \hash{c} && \mbox{a cryptographic collision-resistant hash of $c$}\\
+      \Interval{A} && \mbox{the type of intervals over a totally-ordered set $A$}\\
+      \FinSup{K}{M} && \mbox{the type of finitely supported functions from a type $K$ to a monoid $M$}\\
+      \\
+      \multicolumn{3}{l}{\textsc{Ledger primitives}}\\
+      \Quantity = \Z && \mbox{an amount of an assets}\\
+      \TokenName = [\type{Char}] && \mbox{token name string}\\
+      \AssetID = \Policy \times \TokenName && \mbox{unique asset identifier}\\
+      \Coin \in \AssetID && \mbox{asset ID of the primary currency }\\
+      \Tick && \mbox{slot number representing chain time}\\
+%      \Address && \mbox{an ``address'' in the blockchain}\\
+      \Data && \mbox{a type of structured data}\\
+%      \DataHash && \mbox{the hash of a value of type \Data{}}\\
+      % \hashData : \Data \rightarrow \DataHash && \mbox{computes the hash of an value of type \Data}\\
+%      \TxId && \mbox{the identifier of a transaction}\\
+%      \txId : \eutxotx \rightarrow \TxId && \mbox{computes the identifier of a transaction}\\
+%      \lookupTx : \Ledger \times \TxId \rightarrow \eutxotx{} && \mbox{retrieves the unique transaction with a given identifier}\\
+      \Script && \mbox{the (opaque) type of scripts}\\
+      \applyScript{\_}: \Script \rightarrow \Datum \times \Redeemer \times \vlctx \rightarrow \B && \mbox{applies a script to its arguments}\\
+      \applyMPScript{\_}: \Script \rightarrow \Redeemer \times \mpsctx \rightarrow \B && \mbox{applies a script to its arguments}\\
+      \checkSig : \eutxotx \to \pubkey \to \H \to \B && \mbox{checks that the given PK signed the transaction (excl. signatures)}\\
+%      \scriptAddr : \Script \rightarrow \Address && \mbox{the address of a script}\\
+\\
+    \multicolumn{3}{l}{\textsc{Defined types}}\\
+    \Ix  &=& \N\\
+    \Policy  &=& \Script\\ %\Address
+    \Redeemer  &=& \Data\\
+    \Datum  &=& \Data\\
+    \Signature &=& \pubkey \mapsto \H\\
+    \\
+    \Value   &=& \FinSup{\Policy}{\FinSup{\TokenName}{\Quantity}}\\
+    % \\
+    % \TxOut &=&(\addr: \Address, \val: \Value, \fun{datum}: \Datum)\\ %\datumHash: \DataHash)\\
+    \\
+    \OutputRef &= &(\txrefid: \Tx, \idx: \Ix)\\ %\TxId
+    \\
+    \Output &=&( \validator: \Script,\\
+                & &\ \val : \Value, \\
+                & &\ \datum: \Data )\\
+    \\
+    \Input &=&( \outputref: \sf{OutputRef},\\
+                & &\ \fun{output}: \Output, \\
+                & &\ \redeemer: \Redeemer)\\
+    \\
+    \eutxotx &=&(\inputs: \powerset{\Input},\\
+               & &\ \outputs: [\Output],\\
+               & &\ \fun{validityInterval}: \Interval{\Tick},\\
+               & &\ \mint: \Value,\\
+               & &\ \mintScsRdmrs: \Script \mapsto \Redeemer,\\
+               & &\ \sigs: \Signature)\\
+    \\
+    \UTxO &=&\ \OutputRef \mapsto \Output \\
+    \end{array}
+  \end{displaymath}
+  \caption{Primitives and basic types for the \EUTXOma{} model}
+  \label{fig:eutxo-types}
+\end{ruledfigure}
+%
+\begin{ruledfigure}{t}
+  \begin{displaymath}
+  \begin{array}{rll}
+    % \s{OutputInfo}\s{ } &=&(\val: \Value,\\
+    %                       & &\ \i{validatorHash}: \Address,\\
+    %                       & &\ \datumHash: \DataHash)\\
+    % \\
+    % \s{InputInfo}\s{ } &=& (\outputref: \s{OutputRef},\\
+    %                      & &\ \i{validatorHash}: \Address,\\
+    %                      & &\ \i{datumHash}: \DataHash,\\
+    %                      & &\ \i{redeemerHash}: \DataHash,\\
+    %                      & &\ \s{value}: \Value)\\
+    % \\
+    %  \s{TxInfo}\s{ } &=&(\fun{inputInfo}: \List{\Input},\\
+    %              & &\ \fun{outputInfo}: \List{\Output},\\
+    %              & &\ \fun{validityInterval}: \Interval{\Tick},\\
+    %              & &\ \mint: \Value,\\
+    %              & &\ \mintRdmrs: \Policy \mapsto \Redeemer,\\
+    %              & &\ \sigs: \FinSet{\pubkey})\\
+    % \\
+    \fun{toMap}~ &:& \Ix \to [\Output] \to (\Ix \mapsto \Output) \\
+    \fun{toMap}~\wcard~\{\} &=& [~] \\
+    \fun{toMap}~\var{ix}~[u;~\var{outs}] &=& \{~\var{ix}\mapsto u~\} \cup \{~(\fun{toMap}~(\var{ix}+1)~\var{outs})~\}\\
+    \nextdef
+    \fun{mkOuts}~ &:& \Tx \to \UTxO \\
+    \fun{mkOuts}~{tx} &=& \{~(\var{tx},~\var{ix}) \mapsto o~ \mid~(\var{ix} \mapsto o)\in~\fun{toMap}~0~(\outputs~\var{tx})~\}\\
+    \nextdef
+    \fun{getORefs}~&~:& \Tx \to \powerset{\OutputRef} \\
+    \fun{getORefs}~{tx} &=& \{~\outputref~i~\mid~i~\in~\inputs~\var{tx} ~\} \\
+    \fun{getORefs}_U~{tx} &=& \{~\outputref~i~\mid~i~\in~\inputs~\var{tx},~U~(\outputref~i~\mapsto~\fun{output}~i) ~\} \\
+    \nextdef
+    \s{\vlctx}\s{ } &=& (\Tx, (\Tx,~\Input)) \\
+    \s{\mpsctx}\s{ } &=& (\Tx, \Policy) \\
+    \\
+    % \mkTxInfo: \eutxotx \times \UTxO & \rightarrow &\Tx\\
+    %                  & &   \mbox{\parbox[t]{55mm}{summarises a transaction}}\\
+ %    \mkVlContext &:& \eutxotx \to \OutputRef \rightarrow \vlctx\\
+ %                     & &   \mbox{\parbox[t]{55mm}{summarises a transaction for a validator script in the context of an input and a ledger state}}\\
+ % \\
+ %    \mkMpsContext &:& \eutxotx \to \Policy \rightarrow \mpsctx\\
+ %                     & &   \mbox{\parbox[t]{55mm}{summarises a transaction for a minting policy script in the context of an currency and a ledger state}}\\
+  \nextdef
+  \fun{oneT} &:& \Policy \to \TokenName \to \Value \\
+  \fun{oneT}~ p~n &\leteq& \{ ~p \mapsto \{~n~ \mapsto 1~\}~\} \\
+  \end{array}
+  \end{displaymath}
+  \caption{Auxiliary functions for entering outputs into the UTxO set}
+  \label{fig:ctx-types}
+\end{ruledfigure}
+
+\begin{ruledfigure}{t}
+\begin{enumerate}
+  \item
+    \label{rule:has-input}
+    \textbf{Transaction has at least one input}
+    \begin{displaymath}
+      \inputs~\var{tx}~\neq~\{\}
+    \end{displaymath}
+
+  \item
+    \label{rule:slot-in-range}
+    \textbf{The current slot is within the validity interval}
+    \begin{displaymath}
+      \var{slot} \in \fun{validityInterval}~\var{tx}
+    \end{displaymath}
+
+  \item
+    \label{rule:all-outputs-are-positive}
+    \textbf{All outputs have positive values}
+    \begin{displaymath}
+      \forall o \in \outputs~\var{tx},\ \val~\var{o} > 0
+    \end{displaymath}
+
+  \item
+    \label{rule:all-inputs-refer-to-unspent-outputs}
+    \textbf{All inputs refer to unspent outputs}
+    \begin{displaymath}
+      \forall (\var{oRef},~\var{o})~\in~\{(\outputref~\var{i},~\fun{output}~\var{i}) ~|~ i \in \inputs~\var{tx} \},
+      ~\var{oRef}~ \mapsto~\var{o}~ \in ~\var{utxo}
+    \end{displaymath}
+
+  \item
+    \label{rule:value-is-preserved}
+    \textbf{Value is preserved}
+    \begin{displaymath}
+      \mint~\var{tx} + \sum_{i \in \inputs~\var{tx},~(\outputref~i)\mapsto~o~\in~\var{utxo}} \val~\var{o} = \sum_{o \in \outputs~\var{tx}} \val~\var{o}
+    \end{displaymath}
+
+  \item
+    \label{rule:no-double-spending}
+    \textbf{No output is double spent}
+    \begin{displaymath}
+      \textrm{If } i_1, i \in \inputs~\var{tx} \textrm{ and } \fun{fst}~ (\outputref~\var{i}) = \outputref~\var{i}
+      \textrm{ then } \fun{fst}~i~ = i.
+    \end{displaymath}
+
+  \item
+    \label{rule:all-inputs-validate}
+    \textbf{All inputs validate}
+    \begin{displaymath}
+      \textrm{For all } i \in \inputs~\var{tx},\ \applyScript{\validator~\var{i}}(\datum~\var{i},\, \redeemer~\var{i},\, (\var{tx}, i)) = \true
+    \end{displaymath}
+  %
+  % \item
+  %   \label{rule:validator-scripts-hash}
+  %   \textbf{Validator scripts match output addresses}
+  %   \begin{displaymath}
+  %     \textrm{For all } i \in tx.\inputs,\ \scriptAddr(i.\validator) = \var{utxo}(i).\addr
+  %   \end{displaymath}
+  %
+  % \item
+  %   \label{rule:datum-objects-hash}
+  %   \textbf{Datum objects match output hashes}
+  %   \begin{displaymath}
+  %     \textrm{For all } i \in tx.\inputs,\ \hashData(i.\datum) = \var{utxo}(i).\datumHash
+  %   \end{displaymath}
+%
+  \item
+    \label{rule:forging}
+    \textbf{Minting redeemers present}
+    \begin{displaymath}
+      \forall ~\var{pid}~ \in \supp(\mint~\var{tx}), ~~\exists
+      (\var{pid},\wcard) ~\in~ \mintScsRdmrs~\var{tx}
+    \end{displaymath}
+  \medskip % items jammed together without this
+  \item
+    \label{rule:all-mpss-run}
+    \textbf{All minting policy scripts validate}
+    \begin{displaymath}
+      \textrm{For all } (s, \var{rdmr}) \in \mintScsRdmrs~\var{tx},\ \applyMPScript{s}(\var{rdmr}, (tx, s)) = \true
+    \end{displaymath}
+  \medskip % items jammed together without this
+
+  \item
+    \label{rule:sigs-ok}
+    \textbf{All signatures are correct}
+    \begin{displaymath}
+      \textrm{For all } (pk \mapsto s) \in \sigs~\var{tx},\ \checkSig(\var{tx}, pk, s) = \true
+    \end{displaymath}
+
+\end{enumerate}
+\caption{Validity of a transaction $t$ in the \EUTXOma model}
+\label{fig:validity}
+\end{ruledfigure}
+%
+
+\begin{ruledfigure}{t}
+  \begin{align*}
+    \sum_{\var{or}\mapsto \var{out}\in \var{utxo'}}~\val~\var{out}
+    & = ~\sum_{\var{or}\mapsto \var{out}\in ((\fun{getORefs}~\var{tx}) \subtractdom \var{utxo}) \cup \fun{mkOuts}~{tx}}~\val~\var{out} \\
+    & = ~\sum_{\var{or}\mapsto \var{out}\in \var{utxo}}~\val~\var{out}
+    ~-~\sum_{i \in \inputs~\var{tx},~(\outputref~i\mapsto~\var{out})\in \var{utxo}}~\val~\var{out}
+    ~+~\sum_{\var{out} \in \outputs ~\var{tx}}~\val~\var{out} \\
+    & = ~\sum_{\var{or}\mapsto \var{out}\in \var{utxo}}~\val~\var{out}
+    ~-~\sum_{i \in \inputs~\var{tx},~(\outputref~i\mapsto~\var{out})\in \var{utxo}}~\val~\var{out}
+    ~+~(\mint~\var{tx}) \\
+    &~~~~~~~ + \sum_{i \in \inputs~\var{tx},~(\outputref~i\mapsto~\var{out})\in \var{utxo}}~\val~\var{out} \\
+    & = ~\sum_{\var{or}\mapsto \var{out}\in \var{utxo}}~\val~\var{out}  ~+~(\mint~\var{tx})
+  \end{align*}
+\caption{Proof of the $\sim >$ constraint for POV}
+\label{fig:pov-pf}
+\end{ruledfigure}
+
+\paragraph{$\sim >$ proof sketch for $\fun{NFT}$. }
+\label{pf:nft}
+Suppose $(\var{slot},~\var{utxo},~\var{tx},~\var{utxo'}) \in \LEDGER$.
+\textbf{$\pi~\var{utxo} = 0$ : } By $\fun{hasRef}$, $\fun{myOut} \in \var{utxo}$.
+If $i = 0$, the NFT is not minted, and $0 = s = s'$, and indeed
+$(\emptytype, 0, \var{tx}, 0) \in \\fun{NFT}$. If $i \neq 0$, necessa
+
+ $\fun{myOut}$ is spent, and $\fun{myOut}$ can only be
+spent if $\fun{myNFT}$ is minted. Note here that in fulfilling the proof obligation
+of the $\fun{NFT}$ structured contract, we require to show that the output reference
+$\fun{myNFTRef}$ can never be added to the UTxO by $\var{tx}$, making it possible
+to mint a second copy of $\fun{myNFT}$.
+
+\begin{figure}
+\begin{displaymath}
+  \begin{array}{rll}
+  \fun{toData}_{N} &:& (\B \times \B) \to \Data \\
+  \fun{toData}_{D} &:& \B \to \Data \\
+  \fun{fromData}_{N} &:& \Data \to (\B \times \B)\\
+  \fun{fromData}_{D} &:& \Data \to \B \\
+\end{array}
+\end{displaymath}
+\caption{Encoding and decoding $\TOGGLE$ script datums}
+\label{fig:to-data}
+\end{figure}

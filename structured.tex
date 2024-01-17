@@ -1,41 +1,46 @@
 \section{Simulations and the structured contract formalism}
 \label{sec:struc}
 
-The formal semantics discussed can be used to specify other stateful programs
-besides $\LEDGER$. The programs we are interested in specifying for the purpose of this work
-are those that \emph{run on the ledger}. Intuitively, a stateful program runs on the
-ledger whenever its state is observable within the ledger state, and is always
-updated by a transaction in accordance with the program's specification.
-We now formalize the notion of correctly implementing
-a stateful program on the ledger.
+The programs we are interested in specifying for the purpose of this work
+are those that \emph{run on the ledger}. Intuitively, a stateful program is implemented
+on the ledger whenever its state is observable in (i.e. computable from) the ledger state,
+and whenever the ledger state is updated, the observed program state is updated in accordance
+with the program's specification. We now formalize the notion of correctly implementing
+a stateful program on the ledger using smart contract scripts.
 
-We note that the only tool for implementing programs on the ledger are smart
-contract scripts. A smart contract script encodes the conditions under which
-a transaction can update a part of the ledger state with which the script is
+The purpose of a smart contract script is to encode the conditions under which
+a transaction \emph{can update a part of the ledger state} with which the script is
 associated, e.g. change the total quantity of tokens under a given policy, or
-remove some UTxO entries. For this reason,
-we propose a \emph{stateful} model for specifying programs running on the
-ledger. Such programs are implemented via a one or more
-interacting scripts controlling the updates of the corresponding parts of the UTxO state.
+remove some UTxO entries. This interpretation of the use of stateless
+code on the ledger justifies a \emph{stateful} program model for representing
+most programs running on the ledger. Stateful programs are implemented using one or more
+interacting scripts controlling the updates of the corresponding data in the UTxO state.
 The state of a program on the ledger is \emph{observed} by applying a projection
 function to the ledger state which aggregates the relevant data.
 
-We present several varied examples to demonstrate this.
-In this section, the first example is not, in fact, a script-implemeneted structured
-contract, but rather the specification of an existing ledger feature, the preservation
-of value. We then present an interpretation of an NFT as structured contract,
-as a way to demonstrate that minting policies constitute
-a way to control observable parts of the ledger state.
+A structured contract includes a specification, and a projection function
+that computes the contract state from a given ledger state. It also requires
+a proof of the integrity of the contract's implementation, establishing
+a simulation relation between it and the ledger. That is, that the
+scripts controlling the ledger data returned by the projection function
+ensure the evolution of that data is according to the contract
+specification. For example, the projection function may return the value and
+datum of a UTxO containing a special NFT. This pair of makes up the state of
+a given stateful contract. The script locking that UTxO
+must guarantee that upon being spent, the NFT is always placed into a new UTxO
+with a particular datum and value, which are computed according to the contract specification.
+This approach to ensuring adherence to specification is called a \emph{thread token}
+mechanism \cite{eutxoma}, and we will elaborate
+on it in later sections.
 
-\subsection{Simulations.}
+\subsection{Simulations}
 
-We to formalize the notion of a program running on the ledger, we first state the
-definition a \emph{simulation} \cite{milner-pibook}, instantiating it with lebelled
-state transition systems expressed as small-steps semantics specifications.
+We instantiate the
+definition a \emph{simulation} \cite{milner-pibook} with labelled
+state transition systems expressed as small-step semantics specifications.
 
-\paragraph{Simulation definition.}
+\textbf{Simulation definition.}
 \label{def:simulation}
-
 Let $\TRANS$ and $\STRUC$ be small-step labelled transition systems.
 A \emph{simulation} of $\TRANS$ in $\STRUC$, denoted by
 \[ (\STRUC, \sim_{\TRANS,\STRUC}, \sim_{\to,\TRANS,\STRUC}) \succeq \TRANS \]
@@ -44,12 +49,12 @@ Consists of of the following types together with the following relations :
 \begin{equation*}
   \_ \vdash
   \var{\_} \trans{trans}{\_} \var{\_}
-  \in \powerset (\Env_{\TRANS} \times \State_{\TRANS} \times \Input_{\TRANS} \times \State_{\TRANS})
+  \subseteq (\Env_{\TRANS} \times \State_{\TRANS} \times \Input_{\TRANS} \times \State_{\TRANS})
 \end{equation*}
 \begin{equation*}
   \_ \vdash
   \var{\_} \trans{struc}{\_} \var{\_}
-  \in \powerset (\Env_{\STRUC} \times \State_{\STRUC} \times \Input_{\STRUC} \times \State_{\STRUC})
+  \subseteq (\Env_{\STRUC} \times \State_{\STRUC} \times \Input_{\STRUC} \times \State_{\STRUC})
 \end{equation*}
 \begin{align*}
   \wcard~\sim_{\TRANS,\STRUC}~\wcard ~&:~ \State_{\TRANS} \times \State_{\STRUC} \to \Bool \\
@@ -98,47 +103,52 @@ such that the following holds :
     }
   \end{equation}
 
-  %
-  % \begin{equation}
-  %   \inference[$\sim >$]
-  %   {
-  %     \\~\\
-  %     {
-  %       \begin{array}{c}
-  %         \var{slot}\\
-  %       \end{array}
-  %     }
-  %     \vdash
-  %     {
-  %       \left(
-  %         \begin{array}{r}
-  %           \var{utxo} \\
-  %         \end{array}
-  %       \right)
-  %     }
-  %     \trans{ledger}{\var{tx}}
-  %     {
-  %       \left(
-  %         \begin{array}{r}
-  %           \var{utxo'} \\
-  %         \end{array}
-  %       \right)
-  %     }
-  %     \\~\\
-  %   }
-  %   {
-  %     \begin{array}{r}
-  %       \emptytype \\
-  %     \end{array}
-  %   \vdash
-  %     (\pi~\var{utxo})
-  %     \trans{struc}{\pi_{\Tx}~\var{tx}}
-  %     (\pi~\varUpdate{\var{utxo'}})
-  %   }
-  % \end{equation}
+%   \begin{equation}
+%     \inference[$\sim >$]
+%     {
+%       \\~\\
+%       \pi_{\STRUC}~u~ \neq~ \emptytype &
+%       {
+%         \begin{array}{c}
+%           e\\
+%         \end{array}
+%       }
+%       \vdash
+%       {
+%         \left(
+%           \begin{array}{r}
+%             \var{u} \\
+%           \end{array}
+%         \right)
+%       }
+%       \trans{ledger}{\var{t}}
+%       {
+%         \left(
+%           \begin{array}{r}
+%             \var{u'} \\
+%           \end{array}
+%         \right)
+%       }
+%       \\~\\
+%     }
+%     {
+%       (\pi_{\STRUC}~u'~ \neq~ \emptytype) ~~\wedge~~
+%       \begin{array}{r}
+%         * \\
+%       \end{array}
+%     \vdash
+%       (\pi_{\STRUC}~u)
+%       \trans{struc}{\pi_{\Tx,\STRUC}~t}
+%       (\varUpdate{\pi_{\STRUC}~u'})
+%     }
+%   \end{equation}
+
 
 We write $\sim$ instead of $\sim_{\TRANS,\STRUC}$ whenever the subscript is
-unambiguous. Note that \ref{def:simulation} includes a \emph{proof obligation} that must be
+unambiguous. This relation states that a if a valid state $s \in \State_{\STRUC}$ is
+associated with a valid UTxO state $u$, then any ledger transition starting in
+$s \in \State_{\TRANS}$ is necessarily associated with a valid transition starting
+in state $s$. Note that $\sim$ is a \emph{proof obligation} that must be
 fulfilled as part of the definition, which \emph{does not define a rule}.
 One can construct pairs of transition
 systems with $\sim,~\sim_{\to}$ relations for which this proof obligation cannot
@@ -157,175 +167,164 @@ in $\STRUC$.
 
 The simulation definition we give is general, however, the rest of this work is
 geared towards reasoning about the programmable
-parts of the ledger, ie. those where the permissions are controlled by user-defined
+parts of the ledger, i.e. those where the permissions are controlled by user-defined
 scripts. For this reason, we define a particular class of simulations of $\LEDGER$.
+First of all, since scripts are not allowed to inspect block-level data (i.e. the
+current slot number), we fix the environment of the structured contract specification
+to be a singleton type $\emptytypeT$. Secondly, $\sim$ must be a
+partial function, rather than a relation, which computes a unique contract state
+for a given UTxO state (or fails, returning $\emptytypeT$). The
+relation between arrows must also be expressible as a function which
+computes a specific contract input value for any given transaction.
 
-A \emph{structured contract} $\STRUC$ is a transition system such that
-$(\STRUC, \sim_{\LEDGER,\STRUC}, \sim_{\to,\LEDGER,\STRUC}) \succeq \LEDGER $,
-where $\Env_{\STRUC} \leteq \emptytype$, and
-for some functions $\pi_{\STRUC} : \UTxO \to \State_{\STRUC}^?$ and $\pi_{\Tx,\STRUC} : \Tx \to \Input_{\STRUC}$, the relations $\sim$ and $\sim >$ are given by :
+\textbf{Definition (Structured contract).}
+Let
+$(\STRUC, \sim_{\LEDGER,\STRUC}, \sim_{\to,\LEDGER,\STRUC}) \succeq \LEDGER$
+be a simulation. We say that it is a \emph{structured contract} whenever
+$\Env_{\STRUC} = \emptytype$, and there exist
+two functions $\pi_{\STRUC} : \UTxO \to \State_{\STRUC} \cup \emptytypeT$,
+$\pi_{\Tx,\STRUC} : \Tx \to \Input_{\STRUC}$ such that :
 \begin{align*}
-  \var{utxo}~\sim~s &\leteq (\pi_{\STRUC}~\var{utxo} ~=~s)
-  \nextdef
+  \var{utxo}~\sim~s &\leteq (\pi_{\STRUC}~\var{utxo} ~=~s) \\
   (\var{slot},~\var{tx})~\sim_{\to,\LEDGER,\STRUC}~ (\emptytype, i) &\leteq (\pi_{\Tx,\STRUC}~\var{tx} = i)
 \end{align*}
 
-This definition states that whenever for a given start state $\var{utxo}$
-with a corresponding contract start state $\pi~\var{utxo} \neq \emptytype$,
-each valid step $(\var{slot}, \var{utxo}, \var{tx}, \var{utxo'}) \in \LEDGER$
-at the ledger level necessarily has a corresponding valid
-step at the contract level,
-$(\emptytype, \pi~\var{utxo}, \pi_{\Tx}~\var{tx}, \pi~\var{utxo'}) \in \STRUC$.
-We sometimes denote both $\pi_{\Tx,\STRUC}$ and $\pi_{\STRUC}$
-by $\pi$ or $\pi_{\Tx}$ when the context is clear.
-We also denote the structured contracts by
-\[ (\STRUC,~\pi_{\STRUC},~\pi_{\Tx,\STRUC}) \succeq \LEDGER\]
+\textbf{Discussion. }
+% This definition states that whenever for a given start state $\var{utxo}$
+% with a corresponding contract start state $\pi~\var{utxo} \neq \emptytype$,
+% each valid step $(\var{slot}, \var{utxo}, \var{tx}, \var{utxo'}) \in \LEDGER$
+% at the ledger level necessarily has a corresponding valid
+% step at the contract level,
+% $(\emptytype, \pi~\var{utxo}, \pi_{\Tx}~\var{tx}, \pi~\var{utxo'}) \in \STRUC$.
+We sometimes denote $\pi_{\Tx,\STRUC}$ and $\pi_{\STRUC}$
+by $\pi$ and $\pi_{\Tx}$, respectively, when the context is clear.
+We also denote the structured contracts by $(\STRUC,~\pi_{\STRUC},~\pi_{\Tx,\STRUC}) \succeq \LEDGER$.
+We say that a $\var{utxo}$ is \emph{valid for $\STRUC$} whenever $\pi~\var{utxo} \neq \emptytype$.
 
-There may be transactions that update the ledger state, but not the $\STRUC$ state.
+It is possible for transactions to update the ledger state, but not the $\STRUC$ state.
 There is no a special case for this in the simulation relation, and the $\STRUC$
 specification rules must allow trivial steps if such ledger transactions are possible.
-The $\STRUC$ specification may not itself be deterministic, however, since the
+The $\STRUC$ specification may not be deterministic, however, since the
 $\LEDGER$ is deterministic, given a ledger
 step, there is a unique step in $\STRUC$ corresponding to the ledger one.
+We do not assume that a valid contract state can be computed from an arbitrary
+UTxO state. For this reason, the function $\pi_{\STRUC}$ is partial.
+For example, it is possible that two NFTs exist in a given ledger
+state. When programmed correctly, an NFT minting policy would not allow this
+to happen. To reason about properties of such a policy, we must exclude ledger states
+where the NFT uniqueness condition has a been violated in the start state.
 
-The purpose of structured contracts is to represent all ledger
-simulations that can be defined and implemented via scripts. Since scripts
-cannot inspect any ledger environment data (i.e. the slot number), structured contracts
-have a trivial environment.
-The reason that the $\pi_{\State}$ a (partial) \emph{function} is that it must
-be possible to extract a \emph{unique} contract state from the ledger state
-to meaningfully observe the contracts execution trace corresponding to the ledger execution.
-This function is \emph{partial} because a valid
-$(\var{slot}, \var{utxo}, \var{tx}, \var{utxo'}) \in \LEDGER$ may have a start
-state $\var{utxo}$ that violates some constraints necessary
-to obtain a valid corresponding contract state. For example, the $\var{utxo}$
-state may have multiple copies of what
-was supposed to be an NFT (and therefore unique), and therefore does not map onto
-the state of a contract when that state is the datum of a UTxO entry
-containing that NFT.
-
-Consider now the problem constructing a bisimulation \cite{milner-pibook}, which
-requires that for a given step in a structured
-contract, there exists a corresponding valid ledger transition step. Finding tuple
-representing such a step requires ensuring that all constraints in $\fun{checkTx}$
-are satisfied, including
-the validation of all dependent scripts. Defining a class of structured contracts for which
+Requiring $\sim >$ to be a bisimulation \cite{milner-pibook} between $\STRUC$ and
+$\LEDGER$ is too restrictive, and excludes a lot of interesting contracts.
+Defining a class of structured contracts for which
 this is possible is a difficult problem, and we leave it for future work.
 
-\section{Minting and preservation of value as structured contracts}
-\label{sec:pov}
-
-In this section we give an example of using the structured contract
-formalism to express global invariants of the ledger that
-can be derived from local invariants.
-The EUTxO ledger transition system $\LEDGER$ is said to satisfy the
-\emph{preservation of value (POV)} property. A \emph{local} POV is
-the property that each valid transaction mints exactly the difference
-between the value in the UTxOs in spends and those it creates.
-This is ensured by the ledger rule \ref{rule:value-is-preserved}, which is
-\[ \mint~\var{tx} + \sum_{i \in \inputs~\var{tx},~(\outputref~i)\mapsto~o~\in~\var{utxo}} \val~\var{o} = \sum_{o \in \outputs~\var{tx}} \val~\var{o} \]
-
-Suppose that $(\var{s},~\var{utxo},~\var{tx},~\var{utxo'}) \in \LEDGER$, and
-recall that updated UTxO set is defined as follows
-\[ \var{utxo'}~\leteq~(\fun{txins}~{tx} \subtractdom \var{utxo}) \cup \fun{mkOuts}~{tx} \]
-
-The \emph{global} POV, which can be proved from the local POV,
-states that the sum total of all the tokens
-recorded on the ledger is changed by exactly the amount minted or burned by the
-transaction,
-\[ \sum_{\var{or}\mapsto \var{out}\in \var{utxo'}}~\val~\var{out} ~= ~(\sum_{\var{or}\mapsto \var{out}\in \var{utxo}}~\val~\var{out}) ~+~(\fun{mint}~ \var{tx}) \]
-
-We can express this property via the following structured contract, $\mathsf{POV}$ : \newline
-
-% \begin{figure}[htb]
-\emph{Transition type}
-  \begin{equation*}
-    \_ \vdash
-    \var{\_} \trans{pov}{\_} \var{\_}
-    \in \powerset (\emptytype \times \Value \times \Tx \times \Value)
-  \end{equation*}
-  %
-\emph{Simulation relations}
-  \begin{align*}
-    \pi_{\Tx,\POV}~\var{tx}~ ~&\leteq~\var{tx}
-    \nextdef
-    \pi_{\POV}~\var{utxo}~&\leteq~\sum_{\wcard \mapsto \var{out}\in \var{utxo}}~\val~\var{out}
-  \end{align*}
-  %
-\emph{Transition rule}
-  \begin{equation}
-    \inference[UpdateValTotal]
-    {
-    i \leteq \fun{mint}~\var{tx}
-    \\ ~ \\
-    }
-    {
-    \begin{array}{l}
-      \\
-    \end{array}
-      \vdash
-      \left(
-      \begin{array}{r}
-        \var{s} \\
-      \end{array}
-      \right)
-      \trans{pov}{tx}
-      \left(
-      \begin{array}{r}
-        \varUpdate{\var{s}~+~\var{i}}  \\
-      \end{array}
-      \right) \\
-    }
-  \end{equation}
-%   \caption{Specification of the $\mathsf{UpdateValTotal}$ POV subsystem}
-%   \label{fig:pov-spec}
-% \end{figure}
-
-The value is
-changed exactly by the amount specified in the mint field, so that the $\sim >$ proof
-obligation corresponds exactly to the global POV formulation.
-To complete the definition, it remains to prove
-$\sim >$, which requires that, given that
-$(\var{slot},~\var{utxo},~\var{tx},~\var{utxo'}) ~\in \LEDGER$,
-necessarily $(\emptytype,~\pi~\var{utxo},~\pi~\var{tx},~\pi~\var{utxo'}) \in \POV$.
-
-So, we must show that
-\[ \sum_{\wcard \mapsto \var{out}\in \var{utxo'}}~\val~\var{out} = \sum_{\wcard \mapsto \var{out}\in \var{utxo}}~\val~\var{out} + \fun{mint}~\var{tx} \]
-
-See \ref{fig:pov-pf} for the proof.
-
-% Prove the POV property for the subsystem
-% Automatically derive the POV property for the ledger
-% While the workflow of Fig.9 is:
-% Prove an ad-hoc property for the subsystem (not really formulated as the POV property of the subsystem)
-% Wow! It turns out it's exactly identical to the POV property for the ledger, QED.
-
-
-\subsection{NFT Minting policy specification.}
+\section{NFT minting policy as a structured contract}
+% \label{sec:pov}
+%
+% In this section we give an example of using the structured contract
+% formalism to express global invariants of the ledger that
+% can be derived from local invariants.
+% The EUTxO ledger transition system $\LEDGER$ is said to satisfy the
+% \emph{preservation of value (POV)} property. The \emph{local} POV is
+% the property that each valid transaction mints exactly the difference
+% between the value in the UTxOs in spends and those it creates.
+% This is ensured by the ledger rule \ref{rule:value-is-preserved}, which is
+% \[ \mint~\var{tx} + \sum_{i \in \inputs~\var{tx},~(\outputref~i)\mapsto~o~\in~\var{utxo}} \val~\var{o} = \sum_{o \in \outputs~\var{tx}} \val~\var{o} \]
+%
+% Suppose that $(\var{s},~\var{utxo},~\var{tx},~\var{utxo'}) \in \LEDGER$, and
+% recall that updated UTxO set is computed as follows
+% \[ \var{utxo'} \leteq (\{~i\mapsto o \in \var{utxo} ~\mid~ i \notin \fun{getORefs}~{tx}~\}) \cup \fun{mkOuts}~{tx} \]
+%
+% The \emph{global} POV, which we will prove from the local POV,
+% states that the sum total of all the tokens
+% recorded on the ledger is changed by exactly the amount minted or burned by the
+% transaction,
+% \[ \sum_{\var{or}\mapsto \var{out}\in \var{utxo'}}~\val~\var{out} ~= ~(\sum_{\var{or}\mapsto \var{out}\in \var{utxo}}~\val~\var{out}) ~+~(\fun{mint}~ \var{tx}) \]
+%
+% We can express this property as the following structured contract, $\mathsf{POV}$ : \newline
+%
+% % \begin{figure}[htb]
+% \noindent \emph{Transition type}
+%   \begin{equation*}
+%     \_ \vdash
+%     \var{\_} \trans{pov}{\_} \var{\_}
+%     \in \powerset (\emptytype \times \Value \times \Tx \times \Value)
+%   \end{equation*}
+%   %
+% \emph{Simulation relations}
+%   \begin{align*}
+%     \pi_{\Tx,\POV}~\var{tx}~ ~&\leteq~\var{tx} \\
+%     \pi_{\POV}~\var{utxo}~&\leteq~\sum_{\wcard \mapsto \var{out}\in \var{utxo}}~\val~\var{out}
+%   \end{align*}
+%   %
+% \emph{Transition rule}
+%   \begin{equation}
+%     \inference[UpdateValTotal]
+%     {
+%     i \leteq \fun{mint}~\var{tx}
+%     \\ ~ \\
+%     }
+%     {
+%     \begin{array}{l}
+%       \\
+%     \end{array}
+%       \vdash
+%       \left(
+%       \begin{array}{r}
+%         \var{s} \\
+%       \end{array}
+%       \right)
+%       \trans{pov}{tx}
+%       \left(
+%       \begin{array}{r}
+%         \varUpdate{\var{s}~+~\var{i}}  \\
+%       \end{array}
+%       \right) \\
+%     }
+%   \end{equation}
+% %   \caption{Specification of the $\mathsf{UpdateValTotal}$ POV subsystem}
+% %   \label{fig:pov-spec}
+% % \end{figure}
+%
+% To complete the definition, it remains to prove
+% $\sim >$, which requires that, given that
+% $(\var{slot},~\var{utxo},~\var{tx},~\var{utxo'}) ~\in \LEDGER$,
+% necessarily $(\emptytype,~\pi~\var{utxo},~\pi~\var{tx},~\pi~\var{utxo'}) \in \POV$.
+% This simplifies to exactly our definition of the global POV.
+% See \ref{fig:pov-pf} for the proof.
+%
+% % Prove the POV property for the subsystem
+% % Automatically derive the POV property for the ledger
+% % While the workflow of Fig.9 is:
+% % Prove an ad-hoc property for the subsystem (not really formulated as the POV property of the subsystem)
+% % Wow! It turns out it's exactly identical to the POV property for the ledger, QED.
+%
+%
+% \subsection{NFT Minting policy specification.}
 \label{sec:mit-example}
 
-Re-using the strategy of adding up tokens in existence in the UTxO, we
-can also define a contract expressing a \emph{specific minting policy}.
-This example is meant to illustrate the flexibility and broad scope of the idea that
-a contract "specifies the evolution of some part of the ledger state".
-This example differs from the general POV contract example in a
-noteworthy way. The POV contract represents a property of the ledger transition system.
-Constructing contracts specifying the evolution of the quantity of tokens
-under a specific policy, on the
-other hand, is a tool for developing and verifying reliable minting policy code that behaves in
-the specified way. It can be used to formalize and verify properties of the contract.
+Our first structured contract example is expressing a \emph{specific minting policy}.
+% This example differs from the general POV contract example in a
+% noteworthy way. The POV contract represents a property of the ledger transition system.
+Constructing structured contracts specifying the evolution of the quantity of tokens
+under a specific policy is a tool for formal analysis of minting policy code. In particular,
+we are able to express and prove the defining property of a specific NFT : at most one
+such token can exist on the ledger. Instantiating an NFT as a structured contract
+and expressing this property allows us to mimic something that is quite naturally
+expressed for account-based blockchains with stateful NFT contracts, such as the
+ERC-721 \cite{erc721}, but poses a challenge for EUTxO ledger program analysis.
 
-For a specific policy, we restrict the tokens summed up in the UTxO to
-only those under that policy, which we will call $\fun{myNFTPolicy}$.
-Here, the state type is still $\State \leteq \Value$, and $\Input \leteq \Tx$.
-Rather than define the policy, we first write a small-steps contract $\fun{NFT}$
-to specify when and what changes can be made to the totality of tokens
-under that policy,
+We first pick an identifier for the policy we wish to express,
+$\fun{myNFTPolicy}$. Before writing the policy code, we define a system
+$\fun{NFT}$ to specify how we want
+the total number of tokens on the ledger under this policy to behave.
+Here, the state type is $\State \leteq \Value$, and $\Input \leteq \Tx$.
 \begin{equation}
   \inference[UpdateNFTTotal]
   {
   i \leteq \{~\fun{myNFTPolicy}~\mapsto~\var{tkns}~\in~ \fun{mint}~\var{tx}~\} \\~\\
-  \{\} \subseteq s \subseteq s + i \subseteq \fun{oneT}~\fun{myNFTPolicy}~""
+  \{\} \subseteq s \subseteq s + i \subseteq \fun{oneT}~\fun{myNFTPolicy}~[~]
   \\ ~ \\
   }
   {
@@ -347,78 +346,69 @@ under that policy,
   }
 \end{equation}
 
-The specification states that a transition may only occur whenever both the
-start and the end state contain either no tokens, or only the NFT
-$\fun{oneT}~\fun{myNFTPolicy}~""$, and that value of the start state is necessarily
-contained in the value of the end state. Note that an NFT defined via this
-contract can never be burned, and must be the only token under its policy. It also
-does not require any authentication to be minted.
+The specification states that the only allowed transitions are (i) a constant one,
+and (ii) adding a single NFT, given by $\fun{oneT}~\fun{myNFTPolicy}~[~]$, to the state if
+one does not yet exist. An NFT whose total ledger quantity obeys this specification
+can never be burned, and must be the only token under its policy. It also
+does not require any authentication to be minted. To define the policy and
+projection functions, we pick an output reference $\fun{myNFTRef}$ which we call an
+\emph{anchor}. That is,
+$\fun{myNFTRef}$ must be spent by the NFT-minting transaction as a
+mechanism to ensure that no other transaction can mint another NFT under this policy.
 Next, we define the projection function,
-
 \begin{align*}
   & \pi~\var{utxo}~ \leteq~\begin{cases}
-    0 & \text{ if } \fun{hasRef}~~\wedge~~s = 0 \\
-    s & \text{ if } s = \fun{oneT}~\fun{myNFTPolicy}~"" ~~\wedge~~ \neg~\fun{hasRef}\\
+    s & \text{ if~~} (s ~=~ \fun{oneT}~\fun{myNFTPolicy}~[~]~~\wedge~~\neg~\fun{hasRef}) ~~\vee~~ s = 0\\
     \emptytype & \text{ otherwise } \\
   \end{cases} \\
   &  \where \\
-  &  ~~~~s \leteq~ \{~p~\mapsto~ \var{tkns}~\mid~p\mapsto \var{tkns} \in \sum_{\wcard \mapsto \var{out}\in \var{utxo}}~\val~\var{out},~p = \fun{myNFTPolicy}~\} \\
-  &  ~~~~\fun{hasRef} \leteq (\fun{myNFTRef} \mapsto (\fun{myNFTScript},~\wcard,~d) \in \var{utxo})
+  &  ~~~~s \leteq~ \{~p~\mapsto~ \var{tkns}~\mid~p\mapsto \var{tkns} \in \sum_{\wcard \mapsto \var{out}\in \var{utxo}}~\val~\var{out},~p = \fun{myNFTPolicy}~\}  \\
+  &  ~~~~\fun{hasRef} \leteq (\fun{myNFTRef} \mapsto \wcard \in \var{utxo})
 \end{align*}
 
-Here, $\pi~\var{utxo}$ returns a non-$\emptytype$ result when either (i) the output
-$\fun{myNFTRef} \mapsto (\fun{myNFTScript},~\wcard,~d)$ is in the UTxO set and no
-NFTs under the policy $\fun{myNFTPolicy}$ have been minted yet, or (ii) the NFT under
-the $\fun{myNFTPolicy}$ policy is already minted with the correct token name $""$
-and quantity $1$, and there is no $\fun{myNFTRef}$ in the UTxO set output references.
-
-With these projections, the $\fun{NFT}$ contract is implemented using two scripts,
-the minting policy $\fun{myNFTPolicy}$, and the UTxO-locking script
-$\fun{myNFTScript}$. We now define
-scripts such that it possible to prove the required simulation
-relation $\sim >$,
+Here, $\pi~\var{utxo}$ returns a non-$\emptytype$ result when either
+no tokens under the $\fun{myNFTPolicy}$ policy exist, or only the token
+$\fun{oneT}~\fun{myNFTPolicy}~[~]$ exists under this policy, and the anchor $\fun{myNFTRef}$
+is not in the UTxO. We define the policy,
 \begin{align*}
-  \fun{myNFTPolicy} \leteq & \fun{mkMyNFTPolicy}~ \fun{myNFTRef}
+  \fun{myNFTPolicy} \leteq &~ \fun{mkMyNFTPolicy}~ \fun{myNFTRef}
   \nextdef
   \applyMPScript{\fun{mkMyNFTPolicy}~ \var{myRef}}~\wcard~(\var{tx},~\var{pid})~\leteq &~
-  \exists (\var{myRef}, (\fun{myNFTScript},~\wcard, ~\wcard))~\\
-  &~~~~\in~ \{ ~(\outputref~i, \fun{output}~i)~\mid~i \in \inputs~\var{tx}~\} \\
-  & \wedge \\
-  & \fun{oneT}~\var{pid}~"" ~=~ \mint~\var{tx}
-  \nextdef
-  \applyScript{\fun{myNFTScript}}~\wcard~\wcard~(\var{tx},~\var{i})~\leteq &~
-  ~\fun{oneT}~(\fun{mkMyNFTPolicy}~ (\var{tx},~\var{i}))~"" ~=~ \mint~\var{tx}
+  \exists ~(\var{myRef}, \wcard, \wcard)~\in~ \inputs~\var{tx}~\\
+  & \wedge ~~\fun{oneT}~\var{pid}~[~] ~\in~ \mint~\var{tx}
+  % \nextdef
+  % \applyScript{\fun{myNFTScript}}~\wcard~\wcard~(\var{tx},~\var{i})~\leteq &~   (\fun{myNFTScript},~\wcard, ~\wcard)
+  % ~\fun{oneT}~(\fun{mkMyNFTPolicy}~ (\var{tx},~\var{i}))~[~] ~=~ \mint~\var{tx}
 \end{align*}
 
-The specific NFT
-\[ \fun{myNFT} \leteq \fun{oneT}~(\fun{mkMyNFTPolicy}~ \fun{myNFTRef})~"" \]
+% is identified uniquely by the output reference $\fun{myNFTRef}$ that must be
+% spent to mint it. To make minting possible, the transaction $\fun{tx}$ must first place the
+% following output into the UTxO, with $\fun{myNFTRef} \leteq (\fun{tx}, \fun{ix})$,
+% \[ \fun{myOut} \leteq \fun{myNFTRef} \mapsto (\fun{myNFTScript},~\wcard, ~\wcard) \]
+%
+% The reference $\fun{myNFTRef}$ is chosen by the contract author, and is only
+% valid if it points to $\fun{myOut}$ in the UTxO.
 
-is identified uniquely by the output reference $\fun{myNFTRef}$ that must be
-spent to mint it. To make minting possible, the transaction $\fun{tx}$ must first place the
-following output into the UTxO, with $\fun{myNFTRef} \leteq (\fun{tx}, \fun{ix})$,
-\[ \fun{myOut} \leteq \fun{myNFTRef} \mapsto (\fun{myNFTScript},~\wcard, ~\wcard) \]
-
-The reference $\fun{myNFTRef}$ is chosen by the contract author, and is only
-valid if it points to $\fun{myOut}$ in the UTxO. To prove $\sim >$ (see \ref{pf:nft}),
-we need to make an additional assumption stating that a transaction which
-adds $\fun{myOut}$ to the UTxO cannot be valid again later, once the NFT
+To prove $\sim >$ for the $\NFT$ contract (see Appendix \ref{pf:nft} for a proof
+sketch), we need to make an additional assumption stating that a transaction which
+adds $\fun{myNFTRef}$ to the UTxO cannot be valid again later, once the NFT
 has been minted :
 
-\paragraph{NFT re-minting protection.}
+\textbf{NFT re-minting protection.}
+\label{sec:asm-nft}
 For any $(\var{slot},~\var{utxo},~\var{tx},~\var{utxo'}) \in \LEDGER$, with
-$\pi~\var{utxo}~= \fun{myNFT}$, necessarily $\var{tx} \neq \fun{fst}~\mathsf{myNFTRef}$.
+$\pi~\var{utxo}~= \fun{oneT}~\fun{myNFTPolicy}~[~]$, necessarily $\var{tx} \neq \fun{fst}~\mathsf{myNFTRef}$.
 
-This property is a consequence of replay protection. Replay protection is a trace-based
-safety property
-\cite{liveness} of the EUTxO $\LEDGER$, contingent on certain constraints being satisfied by initial
-trace states \cite{properties}. A full treatment of traces and properties is outside
-the scope of this work. So, to ensure correct program behaviour, we introduce
+Under reasonable assumptions about the initial state of the ledger, this property
+should be consequence of replay protection, which is a trace-based
+safety property of the EUTxO $\LEDGER$. A full treatment of traces and properties is
+the subject of future work. So, to ensure correct program behaviour, we introduce
 the above assumption.
-A related conjecture, provenance, is also proved in \cite{eutxoma}
-for a ledger structure with a fixed initial state and similar validation rules.
-We note that this is an assumption that must be made for all contracts sourcing
-the uniqueness of their NFT identifier from the uniqueness of a an output
-reference across the entire ledger state history.
+% A related conjecture, provenance, is also proved in \cite{eutxoma}
+% for a ledger structure with a fixed initial state and similar validation rules.
+% We note that this is an assumption that must be made for all contracts sourcing
+% the uniqueness of their NFT identifier from the uniqueness of a an output
+% reference across the entire ledger state history.
 
 %  To prove this trace-based property, assumptions about
 % the UTxO state prior to the minting of allowed initial UTxO state must be made.  is outside the scope of this work. A similar
@@ -427,13 +417,27 @@ reference across the entire ledger state history.
 % of their application. This makes it possible to reason about the full transaction
 % history, rather than only
 
-\paragraph{$\fun{NFT}$ property example.}
-At most one NFT under the policy $\fun{myNFTPolicy}$ can ever exist.
-If one does not exist, one can be minted, and
-moreover, an existing NFT cannot be burned : for any $\var{tx}$ such that
-$i \leteq \{~\fun{myNFTPolicy}~\mapsto~\var{tkns}~\in~ \fun{mint}~\var{tx}~\}$,
-\[ \forall~ s,~i,~~ \{\} \subseteq s \subseteq s + i \subseteq \fun{oneT}~\fun{myNFTPolicy}~"" \]
+\textbf{$\fun{NFT}$ property example.}
+At most one NFT under the policy $\fun{myNFTPolicy}$ can ever exist in any
+$\var{utxo}$ that is valid for $\NFT$ :
+for any $\var{utxo}$ such that $\fun{pi}~\var{utxo} \neq \emptytype$,
+\[ \fun{pi}~\var{utxo}~\subseteq~ \fun{oneT}~\fun{myNFTPolicy}~[~] \]
 
-This is immediate from the $\fun{NFT}$ specification. Note that this is a safety
-propery \cite{liveness}, as it can be checked by inspecting a finite number
-of individual states in a given trace. 
+This is immediate from the definition of $\fun{pi}$, however, this result is
+meaningful. By definition of $\sim >$, and the fact
+that $\NFT$ is a structured contract, it is not possible
+to transition from a state valid for $\NFT$ to a state which is not valid for $\NFT$. That is,
+with $(\var{slot}, \var{utxo}, \var{tx}, \var{utxo'}) \in \LEDGER$, the
+updated state $\pi~\var{utxo'}$ must also always have at most one NFT under $\fun{myNFTPolicy}$.
+This also implies that at most one can ever be minted by a valid transaction
+applied to a $\var{utxo}$ valid for $\NFT$.
+%
+%
+%
+% for any $\var{tx}$ such that
+% $i \leteq \{~\fun{myNFTPolicy}~\mapsto~\var{tkns}~\in~ \fun{mint}~\var{tx}~\}$,
+% \[ \forall~ s,~i,~~ \{\} \subseteq s \subseteq s + i \subseteq \fun{oneT}~\fun{myNFTPolicy}~[~] \]
+%
+% This is immediate from the $\fun{NFT}$ specification. Note that this is a safety
+% propery \cite{liveness}, as it can be checked by inspecting a finite number
+% of individual UTxO states in a given trace.

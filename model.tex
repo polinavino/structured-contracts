@@ -1,28 +1,22 @@
 \section{EUTxO ledger model}
 \label{sec:ledger-rules}
 
-The extended UTxO (EUTxO) ledger model is UTxO-based ledger model that supports the use of
+The EUTxO ledger model is UTxO-based ledger model that supports the use of
 user-defined Turing-complete scripts to specify conditions for spending (consuming)
 UTxO entries as well as token minting and burning policies.
-The EUTxO model can be expressed as a labelled transition system, which we define
-in this section.
-
-The state of the system is a UTxO set, and the transition labels are transactions.
-As not every transaction is a valid transition for every UTxO set, we additionally
-formulate the constraints which a transaction must satisfy to be valid in a given
-UTxO set. Note that while in a realistic system, transactions are applied to the
-ledger in blocks, block structure and block-specific ledger state data is secondary
-to the discussion of smart contracts in this work.
+The EUTxO model has been previously expressed in terms of a ledger state containing a list of
+transactions that have been validated, and a set of rules for validating incoming
+transactions \cite{eutxoma}. We demonstrate here that it can be expressed as a labelled transition
+system with the UTxO set as its state, specified in small-step semantics \cite{steps},
+similar to the specification of a deployed EUTxO ledger \cite{alonzo}.
+The transaction validation rules become constraints of the UTxO state transition
+rule. Note that while in a realistic system, transactions are applied to the
+ledger in blocks, we abstract away block structure here for simplicity.
 
 \subsection{Transition Relation Specification}
 
-To give the small-steps semantics which we use to express the transition
-rules and types, we follow the set-theory based notation
-outlined in \cite{steps}, and used in \cite{alonzo} \cite{structured}.
-Non-standard notation used here is given in \ref{fig:notation:nonstandard}.
-
-We denote a transition relation $\mathsf{TRANS}$ as a 4-tuple :
-
+For some $\Env, \State$ and $\Input$, the transition relation $\mathsf{TRANS}$
+is a subset of a 4-tuple :
   \begin{equation*}
     \_ \vdash
     \var{\_} \trans{trans}{\_} \var{\_}
@@ -30,175 +24,185 @@ We denote a transition relation $\mathsf{TRANS}$ as a 4-tuple :
   \end{equation*}
 
 Membership $(\var{env},~s,~\var{inp},~s') \in \mathsf{TRANS}$ is also denoted by
-
   \begin{equation*}
     env \vdash
     \var{s} \trans{trans}{inp} \var{s'}
   \end{equation*}
 
-Given a 4-tuple $(\var{env},~s,~i,~s')$, the role of each component
-specifying the transition is as follows :
+where each component serves the following purpose in the state transition :
 
 \begin{itemize}
-  \item[(i)] $\var{env} \in \Env$ is the fixed \emph{environment} of the state transition
-  update, e.g. the current slot number ;
+  \item[(i)] $\var{env} \in \Env$ is the \emph{environment} ;
 
-  \item[(ii)] $s \in \State$ is the starting state
-  to which an input is applied, e.g. the UTxO set, or a contract state ;
+  \item[(ii)] $s \in \State$ is the \emph{starting state}
+  to which an input is applied ;
 
-  \item[(iii)] $i \in \Input$ is the user input, e.g. a transaction, or input to
-  a contract ;
+  \item[(iii)] $i \in \Input$ is the \emph{input} ;
 
-  \item[(iv)] $s' \in \State$ is the end state
-  obtained from the start state as the result of the application of the input,
-  e.g. the updated UTxO state.
+  \item[(iv)] $s' \in \State$ is the \emph{end state}
+  computed from the start state as the result of the application of the input
+  in the given environment.
 \end{itemize}
 
 A specification $\TRANS$ is made up of one or more
-\emph{transition rules}. That is, the only 4-tuples that are members of $\TRANS$ are those that
+\emph{transition rules}. The only 4-tuples that are members of $\TRANS$ are those that
 satisfy the preconditions in one of its transition rules.
 
-\paragraph{Input vs. Environment. }
-
-Note that there is no formal distinction between the use of input and environment.
-However, making this distinction creates a useful separation between user-issued
-input (e.g. a transaction), and block-level data. For example, slot numbers are
-determined via blocks and a timekeeping mechanism at the consensus level,
-not specified by users. We adopt this convention from the
-EUTxO transition system specification \cite{alonzo}.
-
+\textbf{Input, environment, and labelled transition systems. }
+The input and the environment together are used to calculate the possible
+end state(s) for a given start state, making up the \emph{label} of the
+transition between the start and end states. If the transition system is
+deterministic, there is exactly one end state for a given start state and label.
+We adopt the conventional distinction between environment and input due to
+its usefulness in the blockchain context \cite{shelley}.
+In particular, input comes from users, e.g. a transactions they submit.
+The environment, on the other hand, is outside the user's control, such as
+the blockchain time. Timekeeping is done at the consensus and block level,
+which is outside the scope of this work.
 
 \subsection{Ledger Types}
+The ledger types and rules that we base this work on are, for the most part, similar to those
+presented in existing EUTxO ledger research \cite{eutxoma}. We make some simplifications
+in order to remove details not relevant to this work. We give an overview
+of these for completeness, and clarify any omitted types
+in Figures~\ref{fig:eutxo-types}~\ref{fig:ctx-types}.
+Notation we use that is outside conventional set-theoretic notation is listed
+in Figure \ref{fig:notation:nonstandard}, and explained in the text.
+Here, $\B, \N, \Z$ denote the type of Booleans, natural numbers, and integers, respectively.
+Some types described below are mutually recursive, so there is no natural
+order in which to describe them.
 
-The ledger model we use is an extended UTxO model with native multi-assets,
-as introduced in \cite{structured}. It is based on
-a previously introduced model
-\cite{eutxoma}. We give an overview of the EUTxO state and transaction structure
-below, and present the full set of type definitions
-in Figures~\ref{fig:eutxo-types} and~\ref{fig:ctx-types}.
 % We note that in the previously presented EUTxO models, unhashed scripts and
 % transactions were never stored on-chain.
 
-\paragraph{Scripts. } A $\Script$, or a \emph{smart contract},
-is a piece of stateless user-defined code with a
-boolean output. It is used to specify conditions under which a transaction is allowed
-to perform a specific action. It is executed
-whenever a transaction attempts to perform the action for which it specifies the
-permissions. We do not specify the language in which scripts are written,
-but we presume Turing-completeness.
-
-The input to a script consists of (i) a summary of transaction data,
-(ii) a pointer to the specific action (within the transaction) for which the script
-is specifying the permission (e.g. the policy ID or the input),
-(iii) and a piece of user-defined data we call a $\Redeemer$. A redeemer is defined
-at the time of transaction construction (by the transaction author) for each action
-requiring a script to be
-run. We denote evaluation for scripts that control
-minting of tokens as well as spending by $\applyMPScript{\_}$, followed by the
-script arguments.
-
-\paragraph{Value. } The type $\Value = \FinSup{\Policy}{\FinSup{\TokenName}{\Quantity}}$
-represents bundles of multiple kinds of assets.
-It uses a nested finite map data structure to associate a $\Quantity = \Z$
-to every $\AssetID = \Policy \times \TokenName$. That is, the bundle contains a
-non-zero integral quantity of assets with the asset IDs specified
-in the domain of the map, and zero quantity of assets with all other IDs.
-A token bundle containing no tokens is denoted by $0$. $\Value$ forms a group for
-which we denote group the operation by $+$, as well as a partial order \cite{utxoma}.
-An $\AssetID$
-uniquely identifies a class of assets, wherein all assets are fungible. It is made up of :
+\textbf{Value. } We define $\Value \leteq \FinSup{\Policy}{\FinSup{\TokenName}{\Quantity}}$.
+A term of this type is a bundle of multiple kinds of assets.
+The type of an identifier of a class of fungible assets is given by
+$\AssetID \leteq \Policy \times \TokenName$.
+$\Quantity \leteq \Z$ is an integral value.
+For a given $v \in \Value$, the nested map associates a quantity of each asset
+with a given asset ID to its asset ID. The quantities of all assets with IDs not
+included in $v$ are $0$. A group is formed by $\Value$,
+with the group operation denoted by $+$, and the empty map as the zero of the group.
+$\Value$ also forms a partial order \cite{utxoma}.
+The components of $\AssetID$ are :
 
 \begin{itemize}
-  \item[(i)] a $\Policy$, which is a script that is executed
-  whenever a transaction
-  mints assets under this policy to determine whether it is allowed to do so ;
-  \item[(ii)] a $\TokenName$, which is some $\Data$ a user selects to differentiate between
-  assets under the same policy. For readability, this differs from the $\TokenName$ type in \cite{eutxoma},
-  where it is defined to be character string.
+  \item[(i)] a script of type $\Policy \leteq \Script$, which executed any time a transaction is minting
+  assets with this minting policy ;
+  \item[(ii)] a $\TokenName \leteq [\type{Char}]$, selected by the user, and used to differentiate
+  assets that have the same minting policy.
 \end{itemize}
 
-We construct a $\Value$ with a single asset, whose asset ID is given by
+To define a $\Value$ with a single asset ID and quantity one, we use the following
+function,
 \[ \fun{oneT}~\fun{policy}~\fun{tokenName}~ \leteq~ \{~\fun{policy}~\mapsto~\{ \fun{tokenName} \mapsto 1 \}~\} \]
 
-\paragraph{UTxO set. } The UTxO set
-is a finite map $\UTxO = \OutputRef \mapsto \Output$.
-The $\OutputRef = \Tx \times \Ix$ is the type of the key of the UTxO finite map, with $\Ix = \N$.
-An output reference $(\var{tx}, \var{ix})$ is made up of (i) a transaction $\var{tx}$ that
-created the output to which it points, and (ii) index of $\var{ix}$,
-pointing to the place of a particular output in the list of outputs
-of that transaction. This uniquely specifies an
-output in a specific transaction.
+\textbf{UTxO set. } The type of the UTxO set is a finite map $\UTxO \leteq \OutputRef \mapsto \Output$.
+The type of the key of this key-value map is $\OutputRef = \Tx \times \Ix$, with $\Ix = \N$.
+A $(\var{tx}, \var{ix}) \in \OutputRef$ is called an output reference. It consists of a
+transaction $\var{tx}$ that
+created the output to which it points, and index of $\var{ix}$.
+The index is the location of particular output in the list of outputs
+of that transaction. The pair uniquely identifies a transaction
+output.
 
-An output $(a, v, d) \in \Output$ is made up of (i) an address $a$, which is a $\Script$,
-and it specifies under
-what conditions a given output can be spent by a transaction, (ii) an asset bundle $v$ locked
-by this script, and (iii) an additional piece of data $d \in \Datum$, specified
-by the transaction that adds this output to the UTxO.
+An output $(a, v, d) \in \Output$ consists of (i) a script address $a \in \Script$,
+which is run when the output is spent, (ii) an asset bundle $v \in \Value$ , and
+(iii) a datum $d \in \Datum$, which is some additional data.
 
-\paragraph{$\Data$. } Is a type for encoding data that can be passed as arguments
-to scripts, similar in structure to a CBOR encoding.
-For details, see \cite{agdaspeceutxo}. It is also used in \cite{eutxoma},
-and in the Cardano implementation \cite{cardano}.
-The types $\Datum$ (data stored alongside value in an output) and
-$\Redeemer$ (data specified by the user for spending a specific UTxO entry)
-are both synonyms for the $\Data$ type. For each script, conversion functions
-for both the datum and redeemer are defined to decode and encode those arguments
-to and from the specific argument types expected by the script. We usually call the decoding
-function $\fun{fromData}$, and the encoding one $\fun{toData}$ when the context
-is unambiguous.
+\textbf{$\Data$. } $\Data$ is a type used for representing data encoded in a specific
+way, is similar in structure to a CBOR encoding, for details, see \cite{agdaspeceutxo}.
+It was introduced in the definition of
+the EUTxO ledger \cite{eutxoma}, and also used in its Cardano implementation \cite{cardano}.
+Data of this type is passed as arguments to scripts.
+The types $\Datum \leteq \Data$ and $\Redeemer \leteq \Data$
+are both synonyms for the $\Data$ type. Conversion functions are required in order
+for a script to interpret $\Data$-type inputs as the datatypes it is expecting.
+When the context is clear, the decoding
+function is called $\fun{fromData}$, and the encoding one is $\fun{toData}$.
 
-\paragraph{Transactions. } $\Tx$ is a data structure that specifies
-the updates to be done to the UTxO set. A transaction $\var{tx} \in \Tx$
+\textbf{$\Slot$ number. }  A slot number $s \in \Slot \leteq \N$ is a natural
+number used to represent the time at which a transaction is processed.
+
+\textbf{Transactions. } The data structure $\Tx$ specifies
+a set of updates to the UTxO set. A transaction $\var{tx} \in \Tx$
 contains (i) a set of \emph{inputs} each referencing entries in the UTxO set that the transaction
 is removing (spending), with their corresponding redeemers, (ii) a set of outputs, which get entered into the
 UTxO set with the appropriately generated output references, (iii) a pair of slot
 numbers representing the validity interval of the transaction, (iv) a $\Value$ being
 minted by the transaction, (v) a redeemer for each
 of the minting policies being executed, and (vi) the set of (public) keys that signed the
-transaction, together with their signatures.
+transaction, paired with their signatures.
 
-\paragraph{$\Slot$ number. }  A slot number is a natural number used to represent
-the time at which a transaction is processed, with $\Slot = \N$.
+\textbf{Scripts. } A smart contract, or \emph{script},
+is a piece of stateless user-defined code with a
+boolean output, and has the (opaque) type $\Script$. Scripts are associated
+with performing a specific
+action, such as spending an output, or minting assets. If a transaction
+attempts to perform an action associated with a script, that script is executed
+during transaction validation, and must return $\True$ (validate) given certain
+inputs. A script specifies the
+conditions a transaction must satisfy in order to be allowed to perform the
+associated action. We do not specify the language in which scripts are written,
+but we presume Turing-completeness. We use set-theoretic notation for script
+pseudocode.
+
+The input to a script consists of (i) a summary of transaction data,
+(ii) a pointer to the specific action (within the transaction) for which the script
+is specifying the permission,
+(iii) and a piece of user-defined data we call a $\Redeemer$. A redeemer is defined
+at the time of transaction construction (by the transaction author) for each action
+requiring a script to be
+run.
+
+We denote evaluation of scripts that control
+minting tokens and spending outputs by $\applyMPScript{\_}$, followed by the
+script arguments.
+For example, evaluating a minting policy script $s$ to validate
+minting tokens under policy $p$, run by transaction $\var{tx}$ with redeemer $r$, is denoted by
+$\applyMPScript{s}~r~(\var{tx},~p)$
+Evaluating a script $q$ to validate spending input $i \in \inputs~\var{tx}$ with
+datum $d$ and redeemer $r$, we write $\applyMPScript{q}~d~r~(\var{tx},~i)$
 
 \subsection{Ledger Transition Semantics}
 \label{sec:ledgersem}
 
-The type of the ledger transition system $\mathsf{LEDGER}$, that updates the UTxO
-set by applying a given transaction in a specific environment (slot), is
-denoted as follows :
-
+Permissible updates to the UTxO set are given by the $\mathsf{LEDGER}$ transition
+system,
   \begin{equation*}
     \_ \vdash
     \var{\_} \trans{ledger}{\_} \var{\_}
     \subseteq (\Slot \times \UTxO \times \Tx \times \UTxO)
   \end{equation*}
 
-We introduce the function $\fun{checkTx}$, which
-consists of the constraints that must be satisfied by a given tuple
-in order to constitute a valid ledger update. This function performs the following
-checks, specified in Figure \ref{fig:validity}, and consistent with the ledger rules
-specified in \cite{eutxoma} \cite{structured} :
+The output of the function $\fun{checkTx} : \Slot \times \UTxO \times \Tx \to \B$
+determines whether a transaction is valid
+in a given state and environment. The output of $\fun{checkTx}~(\var{slot}, \var{utxo}, \var{tx})$
+is given by the conjunction of the following checks, which are consistent with the previously
+specified EUTxO validation rules \cite{eutxoma} :
 
 \begin{itemize}
-  \item[(i)] The transaction has at least one input
-  \item[(ii)] The current slot is within transaction validity interval
-  \item[(iii)] All outputs have positive values
-  \item[(iv)] All output references of transaction inputs exist in the UTxO
-  \item[(v)] Value is preserved
-  \item[(vi)] No output is double-spent
-  \item[(vii)] All inputs validate
-  \item[(viii)] Minting redeemers are present
-  \item[(ix)] All minting scripts validate
-  \item[(x)] All signatures are present
+  \item[(i)] The transaction has at least one input : $\inputs~\var{tx}~\neq~\{\}$
+  \item[(ii)] The current slot is within transaction validity interval : $\var{slot} \in \fun{validityInterval}~\var{tx}$
+  \item[(iii)] All outputs have positive values : $\forall o \in \outputs~\var{tx},~\val~\var{o} > 0$
+  \item[(iv)] All output references of transaction inputs exist in the UTxO : \\
+  $\forall (\var{oRef},~\var{o})~\in~\{(\outputref~\var{i},~\fun{output}~\var{i}) ~|~ i \in \inputs~\var{tx} \},
+  ~\var{oRef}~ \mapsto~\var{o}~ \in ~\var{utxo} $
+  \item[(v)] Value is preserved : $\mint~\var{tx} + \sum_{i \in \inputs~\var{tx},~(\outputref~i)\mapsto~o~\in~\var{utxo}} \val~\var{o} = \sum_{o \in \outputs~\var{tx}} \val~\var{o}$
+  \item[(vi)] No output is double-spent : $\forall~i_1, i \in \inputs~\var{tx},~\outputref~\var{i} = \outputref~i_1 ~\Rightarrow~ i = i_1$
+  \item[(vii)] All inputs validate : $\forall~ (i, o, r) \in \inputs~\var{tx},~ \applyScript{\validator~\var{o}}(\datum~\var{o},~r,~ (\var{tx}, (i, o, r))) $
+  \item[(viii)] Minting redeemers are present : $\forall ~\var{pid}\mapsto \wcard~ \in (\mint~\var{tx}), ~~\exists
+  (\var{pid},\wcard) ~\in~ \mintScsRdmrs~\var{tx}$
+  \item[(ix)] All minting scripts validate : $\forall~ (p, \var{r}) \in \mintScsRdmrs~\var{tx},~ \applyMPScript{p}(\var{r}, (tx, p)) $
+  \item[(x)] All signatures are present : $\forall~ (pk \mapsto s) \in \sigs~\var{tx},~ \checkSig(\var{tx}, pk, s) $
 \end{itemize}
 
-We use the function $\fun{checkTx}$ to define membership in the
-$\mathsf{LEDGER}$ relation, and call this rule $\fun{ApplyTx}$.
-More specifically, $\fun{ApplyTx}$ states that
+Membership in the $\LEDGER$ set is defined using $\fun{checkTx}$.
+The single rule defining $\LEDGER$, called $\fun{ApplyTx}$, states that
 $(\var{slot},~\var{utxo},~\var{tx},~\var{utxo'}) \in \mathsf{LEDGER}$
 whenever $\fun{checkTx}~(\var{slot},~\var{utxo},~\var{tx})$ holds and $\var{utxo'}$
 is given by $(\{~i\mapsto o \in \var{utxo} ~\mid~ i \notin \fun{getORefs}~{tx}~\}) \cup \fun{mkOuts}~{tx} $.
-
 % \begin{figure}[htb]
   \begin{equation}
   \label{fig:ledger-rule}
@@ -228,25 +232,19 @@ is given by $(\{~i\mapsto o \in \var{utxo} ~\mid~ i \notin \fun{getORefs}~{tx}~\
     }
   \end{equation}
 
-The value $\var{utxo'}$ is calculated by removing the UTxO entries in $\var{utxo}$
+The value $\var{utxo'}$ is calculated (deterministically) by removing the UTxO entries in $\var{utxo}$
 corresponding to the output references of the transaction inputs, and adding the outputs of the
-transaction to the UTxO set with correctly generated output references.
-The functions used to compute the updated UTxO set are defined in \ref{fig:ctx-types}.
+transaction $\var{tx}$ to the UTxO set with correctly generated output references.
+The function $\fun{getORefs}$ computes a UTxO set containing only the output
+references of transaction inputs, paired with the outputs contained in those inputs.
+The function $\fun{mkOuts}$ computes a UTxO set containing exactly the outputs of
+$\var{tx}$, each associated to the key $(\var{tx}, \var{ix})$. The index
+$\var{ix}$ is the place of the associated output in the list of $\var{tx}$ outputs.
+For details, see \ref{fig:ctx-types}.
 
-Unlike the
-ledger model in \cite{eutxoma}, which contains a full list of all transactions in
-the order they have been applied to the initial \emph{empty} ledger,
-$\LEDGER$ does not specify an initial ledger state. For this reason, we
-sometimes have to make additional assumptions about transactions.
-
-In later sections,
-when necessary, we assume certain conditions on
-the starting state of the ledger trace to be true, such as the existence of a specific
-entry in the UTxO set. Note also that $\LEDGER$
-has no trivial transitions due to the fact that transactions without
-inputs are not allowed by rule \ref{rule:has-input}, so the UTxO set is necessarily updated
-by the transaction by (at minimum) removing its inputs.
-An arbitrary labelled transition $\mathsf{TRANS}$ need not be deterministic,
-and may allow multiple distinct end states for a given initial state, environment,
-and input. However, the $\mathsf{LEDGER}$ system is \emph{deterministic}, as the
-end state variable $\var{utxo'}$ is uniquely specified by in its only rule, $\mathsf{ApplyTx}$.
+Unlike the \emph{empty} ledger state, which is an initial ledger state in existing
+EUTxO definitions \cite{eutxoma}, the ledger model we define by
+$\LEDGER$ does not have an initial ledger state. For this reason, we
+make additional assumptions about transactions, which could
+be verified as properties or valid ledger traces starting from some valid initial state.
+This is the subject of future work.

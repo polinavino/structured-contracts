@@ -156,8 +156,8 @@
 \newcommand{\DataHash}{\ensuremath{\s{DataHash}}}
 \newcommand{\hashData}{\fun{dataHash}}
 \newcommand{\idx}{\fun{index}}
-\newcommand{\inputs}{\fun{txins}}
-\newcommand{\outputs}{\fun{outs}}
+\newcommand{\inputs}{\fun{inputs}}
+\newcommand{\outputs}{\fun{outputs}}
 \newcommand{\Out}{\type{Output}}
 \newcommand{\validityInterval}{\fun{validityInterval}}
 \newcommand{\scripts}{\fun{scripts}}
@@ -425,6 +425,7 @@
 \newcommand{\TArgs}{\type{TArgs}}
 \newcommand{\ACCNTS}{\type{ACCNTS}}
 \newcommand{\ACCOP}{\type{ACCOP}}
+\newcommand{\NFT}{\type{NFT}}
 
 \newcommand{\PayIns}{\type{PayIns}}
 \newcommand{\PayOuts}{\type{PayOuts}}
@@ -552,21 +553,20 @@ specification, transition system, UTxO, semantics} %TODO mandatory; please add c
   supports the use of smart contract scripts to specify permissions for performing
   certain actions, such as spending a UTxO or minting assets. There have been
   some attempts to standardize the implementation of stateful programs using this
-  infrastructure, with varying degrees of success. In this work, we present a formalization of
-  the very notion of correctly
-  implementing stateful programs on the ledger, which we call the structured
+  infrastructure, with varying degrees of success. In this work, we present a model of
+  stateful computation on the ledger, which we call the structured
   contract framework.
 
   Using a small-step semantics approach to program specification, the structured
-  contracts framework establishes a subsystem relation between the ledger
+  contracts framework establishes a simulation relation between the ledger
   state transition system and the transition system of the program being specified.
   This gives users the tools for demonstrating the correctness of a transition
   system's ledger implementation.
-  We argue that the framework is extremely versatile by presenting several
-  highly distinct examples. In particular, we demonstrate how the framework allows
-  for building distinct implementations of the same specification.
-  We discuss useful potential applications of this framework to
-  existing problems in smart contract verification.
+  We argue that the framework is versatile and amenable to formal verification
+  by presenting several distinctive examples. In particular, we demonstrate how the framework allows
+  for building multiple implementations of the same specification (some of which may be distributed
+  across the UTxO set), as well
+  as expressing the policy of an NFT as a stateful contract with a specific invariant.
 \end{abstract}
 
 \input{intro.tex}

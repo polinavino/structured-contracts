@@ -13,76 +13,64 @@ in the details of how smart contract support is implemented across different pla
 In particular, on account-based platforms such as Ethereum \cite{ethereum}
 and Tezos \cite{tezos}, smart contracts are inherently stateful, and their states
 can be updated by transactions. Smart contracts in
-the EUTxO model such as \cite{alonzo}, on the other hand, take the form of boolean predicates
+the extended UTxO (EUTxO) model, such as Cardano \cite{alonzo} and
+\cite{ergo}, on the other hand, take the form of boolean predicates
 on the data of the transaction executing them, and are inherently stateless.
 In this model, transactions specify all the changes being done to the ledger
 state, while contract predicates are used only to specify permissions
 for performing the UTxO set updates specified by the transaction, such as spending
 UTxOs or minting tokens.
 
-Just within the UTxO model, are multiple existing approaches to implementing and formalizing specific
+Just within the UTxO model, there are multiple existing approaches to implementing and formalizing specific
 designs of stateful programs running on the ledger \cite{eutxoma} \cite{marlowe} \cite{hydra}.
 There are also languages, such as BitML \cite{bitml}, a DSL for specifying
 contracts that regulate transfers of Bitcoin among participants.
 There is also much existing work on smart contract formal verification.
-However, currently, there are no principled standard practices for using this smart contract
-model for specifying and implementing stateful programs on the EUTxO ledger.
-In this work, we propose to re-use the existing specification standard for the
-ledger model to specify stateful contracts.
+However, currently, there are no principled standard practices for
+specifying and implementing stateful programs on the EUTxO ledger.
+In this work, we propose to re-use an existing ledger specification standard
+to specify stateful contracts.
 
 Like many prominent platforms
 \cite{tezos} \cite{ethereum} \cite{Nakamoto} \cite{nervos} \cite{zil},
-the EUTxO ledger is specified as a state transition system. It is given in terms of its operational
-small-steps semantics describing the application of blocks and
-transactions to a given ledger state \cite{alonzo}. The reason for this
-design chice is that
+the Cardano implementation of the EUTxO ledger \cite{alonzo} is specified as a
+transition system. The reason for this
+design choice is that
 the evolution of the ledger takes place in atomic steps corresponding to
-transaction applications. We propose the \emph{structured contract framework}
-(SCF) as an extension on the ledger semantics formalization.
-It enables the users
-to instantiate a small-steps program specification as a \emph{subsystem of the ledger}
+the application of a single transaction. What sets the Cardano specification apart,
+however, is the formal rigour of its operational
+small-step semantics specification \cite{steps}.
+We propose the \emph{structured contract framework}
+(SCF) as an extension of this approach to specification.
+It enables users
+to instantiate a small-step program specification that runs on the ledger
 via the use of smart contract scripts.
 
-Permission scripts in the EUTxO model
-control the change of the part of the ledger state for which they specify
-permissions. Structured contracts make precise what it means to "control a part
-of the ledger state" by specifying the evolution of that part as stateful
-program, which happens in accordance with the permissions of the relevant scripts.
-Generalizing the subsystem design pattern proposed in \cite{eutxoma},
+Generalizing the constraint-emitting machine design pattern \cite{eutxoma},
 the SCF formalizes the notion of stateful program running on the EUTxO ledger,
-and what it means for it to be \emph{implemented correctly}. Moreover, unlike the
-existing design pattern,
-our generalization allows a stateful contract
-to be distributed across multiple UTxOs and tokens, implemented via a suite of scripts.
-We note that the EUTxO model guarantees transaction
-commutativity \cite{properties}, making it a natural fit for building contracts
-with state distributed across different parts of the ledger. These state components
-be updated independently with predictable outcomes, regardless of the order in
-which transactions are processed.
-
-We present several examples to showcase the versatility of our approach to
-contract specification and verification.
-We discuss how the SCF can be
-used to formalize and address existing challenges in the field of smart contract
-verification in the EUTxO model.
-We argue that the SCF constitutes a new, principled standard approach to stateful
-smart contract architecture. It allows users to specify and implement
-behaviour of all ledger subsystems programmable via smart contract script predicates.
+and what it means for it to be \emph{implemented correctly}. We do so by
+requiring instantiation of a stateful program to include a proof of a \emph{simulation relation }
+between its specification and the ledger specification.
+Our generalization allows expressing invariants (or safety properties) of contracts
+for which it was not previously done. For example, we can express invariants of stateful
+contracts that are implemented across multiple different UTxOs. We can also
+express invariants on the totality of tokens under a specific policy by interpreting
+it as the state of a structured contract. %invariants of the ledger itself? POV
+We argue that the SCF constitutes a new, principled approach to stateful
+smart contract architecture that is amenable to formal analysis and suitable for
+a wide range of smart contract applications.
 The main contributions of this paper are :
 
 \begin{itemize}
-  \item[(i)] definition of a simplified EUTxO ledger via a small-steps semantics
-  formalism ;
+  \item[(i)] a definition of a simplified EUTxO ledger using small-steps semantics ;
 
-  \item[(ii)] definition of the structured contract formalism (SCF) as a ledger subsystem,
-  consisting of a stateful program specification together with a proof obligation  ;
+  \item[(ii)] a definition of the structured contract formalism (SCF) ;
 
-  \item[(iii)] a case study demonstrating the use of the SCF to specify and prove an EUTxO
-  ledger property (the preservation of value), with a related example of expressing a minting policy as a
-  structured contract ;
+  \item[(iii)] a case study expressing the
+  minting policy of a single NFT as a structured contract ;
 
-  \item[(iv)] a case study demonstrating the use the SCF to define and
-  prove prove the correctness of two distinct ledger implementations of a
+  \item[(iv)] a case study demonstrating the use the SCF to define
+  two distinct ledger implementations of a
   single specification, including one that is distributed across multiple
   UTxO entries and interacting scripts ;
 
